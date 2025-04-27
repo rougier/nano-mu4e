@@ -1,0 +1,86 @@
+
+*NANO mu4e*
+
+* Introduction
+
+NANO-mu4e is a minor mode for [[https://www.djcbsoftware.nl/code/mu/][mu4e]] that offer an alternative layout
+for headers view when threads are enabled.
+
+- Threads are clearly separated
+- Threads are centered on the subject
+- Tags are shown only on the thread subject line
+- Unread mails are clearly marked
+- New mails can be previewed in headers view
+- Mark is made more salient
+- Thread folding is adapted to the style.  
+
+Different stylaes are available
+
+** Simple style
+
+#+begin_quote
+[L] Thread subject 1                                                      TAG-1 TAG-2 [15]
+    Initial sender                                                               Yesterday
+    [13 hidden messages]                                                               ...
+    Recipient 1                                                             Today at 10:21 
+    ┊ New message content can be displayed inside the header view.
+    Recipient 2                                                             Today at 11:07 
+
+[P] Thread subject 2                                                             TAG-3 [1]
+    Initial sender                                                          Today at 10:32
+#+end_quote
+    
+** Regular style
+
+#+begin_src text
+──────────────────────────────────────────────────────────────────────────────────────────
+[L] Thread subject 1                                                      TAG-1 TAG-2 [15]
+    Initial sender                                                               Yesterday
+    [13 hidden messages]                                                               ...
+    Recipient 1                                                             Today at 10:21 
+    ┊ New message content can be displayed inside the header view.
+    Recipient 2                                                             Today at 11:07 
+──────────────────────────────────────────────────────────────────────────────────────────
+[P] Thread subject 2                                                             TAG-3 [1]
+    Initial sender                                                          Today at 10:32
+──────────────────────────────────────────────────────────────────────────────────────────
+#+end_src
+
+** Compact style
+
+#+begin_src text
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│ [L] Thread subject 1                                                  TAG-1 TAG-2 [15] │
+│     Initial sender                                                           Yesterday │
+│     [13 hidden messages]                                                           ... │
+│     Recipient 1                                                         Today at 10:21 │
+│     ┊ New message content can be displayed inside the header view.                     │
+│     Recipient 2                                                         Today at 11:07 │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ [P] Thread subject 2                                                         TAG-3 [1] │
+│     Initial sender                                                      Today at 10:32 │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+#+end_src
+
+** Boxed style
+
+#+begin_src text
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│ [L] Thread subject 1                                                  TAG-1 TAG-2 [15] │
+│     Initial sender                                                           Yesterday │
+│     [13 hidden messages]                                                           ... │
+│     Recipient 1                                                         Today at 10:21 │
+│     ┊ New message content can be displayed inside the header view.                     │
+│     Recipient 2                                                         Today at 11:07 │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│ [P] Thread subject 2                                                         TAG-3 [1] │
+│     Initial sender                                                      Today at 10:32 │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+#+end_src
+
+* Usage
+
+#+begin_src emacs-lisp
+(nano-mu4e-mode)
+#+end_src emacs-lisp
