@@ -387,9 +387,10 @@ be done with a display property or spaces depending on USE-SPACE."
 
   (let ((text (propertize (format "[%d hidden messages%s]" count
                                   (if (> unread 0) (format ", %d unread" unread) ""))
-                          'face 'nano-critical)))
+                          'face 'error))
+        (ellipsis (propertize "•••" 'face 'error)))
     (concat (nano-mu4e-justify (list "   " text)
-                               (list "•••")
+                               (list ellipsis)
                                nil nil t) "\n")))
    
 (defun nano-mu4e-msg-is-thread-root (msg)
