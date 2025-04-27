@@ -41,72 +41,89 @@
 ;;; Code:
 (require 'mu4e)
 
+(defgroup nano nil
+  "N Λ N O"
+  :group 'convenience)
+
+(defgroup nano-mu4e nil
+  "N Λ N O Mu4e"
+  :group 'nano)
+
 (defcustom nano-mu4e-style 'compact
-  "One of 'simple 'regular, 'boxed, or 'compact
+  "One of simple regular, boxed, or compact
 
 Simple:
 
-[L] Thread subject 1                                                      TAG-1 TAG-2 [15]
-    Initial sender                                                               Yesterday
-    [13 hidden messages]                                                               ...
-    Recipient 1                                                             Today at 10:21 
+[L] Thread subject 1                                           TAG-1 TAG-2 [15]
+    Initial sender                                                    Yesterday
+    [13 hidden messages]                                                    ...
+    Recipient 1                                                  Today at 10:21 
     ┊ New message content can be displayed inside the header view.
-    Recipient 2                                                             Today at 11:07 
+    Recipient 2                                                  Today at 11:07 
 
-[P] Thread subject 2                                                             TAG-3 [1]
-    Initial sender                                                          Today at 10:32
+[P] Thread subject 2                                                  TAG-3 [1]
+    Initial sender                                               Today at 10:32
 
 
 Regular:
 
-──────────────────────────────────────────────────────────────────────────────────────────
-[L] Thread subject 1                                                      TAG-1 TAG-2 [15]
-    Initial sender                                                               Yesterday
-    [13 hidden messages]                                                               ...
-    Recipient 1                                                             Today at 10:21 
+───────────────────────────────────────────────────────────────────────────────
+[L] Thread subject 1                                           TAG-1 TAG-2 [15]
+    Initial sender                                                    Yesterday
+    [13 hidden messages]                                                    ...
+    Recipient 1                                                  Today at 10:21 
     ┊ New message content can be displayed inside the header view.
-    Recipient 2                                                             Today at 11:07 
-──────────────────────────────────────────────────────────────────────────────────────────
-[P] Thread subject 2                                                             TAG-3 [1]
-    Initial sender                                                          Today at 10:32
-──────────────────────────────────────────────────────────────────────────────────────────
+    Recipient 2                                                  Today at 11:07 
+───────────────────────────────────────────────────────────────────────────────
+[P] Thread subject 2                                                  TAG-3 [1]
+    Initial sender                                               Today at 10:32
+───────────────────────────────────────────────────────────────────────────────
 
 Compact:
 
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ [L] Thread subject 1                                                  TAG-1 TAG-2 [15] │
-│     Initial sender                                                           Yesterday │
-│     [13 hidden messages]                                                           ... │
-│     Recipient 1                                                         Today at 10:21 │
-│     ┊ New message content can be displayed inside the header view.                     │
-│     Recipient 2                                                         Today at 11:07 │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│ [P] Thread subject 2                                                         TAG-3 [1] │
-│     Initial sender                                                      Today at 10:32 │
-└────────────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [L] Thread subject 1                                       TAG-1 TAG-2 [15] │
+│     Initial sender                                                Yesterday │
+│     [13 hidden messages]                                                ... │
+│     Recipient 1                                              Today at 10:21 │
+│     ┊ New message content can be displayed inside the header view.          │
+│     Recipient 2                                              Today at 11:07 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ [P] Thread subject 2                                              TAG-3 [1] │
+│     Initial sender                                           Today at 10:32 │
+└─────────────────────────────────────────────────────────────────────────────┘
 
 
 Boxed:
 
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ [L] Thread subject 1                                                  TAG-1 TAG-2 [15] │
-│     Initial sender                                                           Yesterday │
-│     [13 hidden messages]                                                           ... │
-│     Recipient 1                                                         Today at 10:21 │
-│     ┊ New message content can be displayed inside the header view.                     │
-│     Recipient 2                                                         Today at 11:07 │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ [P] Thread subject 2                                                         TAG-3 [1] │
-│     Initial sender                                                      Today at 10:32 │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-")
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [L] Thread subject 1                                       TAG-1 TAG-2 [15] │
+│     Initial sender                                                Yesterday │
+│     [13 hidden messages]                                                ... │
+│     Recipient 1                                              Today at 10:21 │
+│     ┊ New message content can be displayed inside the header view.          │
+│     Recipient 2                                              Today at 11:07 │
+└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [P] Thread subject 2                                              TAG-3 [1] │
+│     Initial sender                                           Today at 10:32 │
+└─────────────────────────────────────────────────────────────────────────────┘
+"
+  :group 'nano-mu4e
+  :type '(choice (const :tag "Simple" simple)
+                 (const :tag "Regular" regular)
+                 (const :tag "Compact" compact)
+                 (const :tag "Boxed" boxed)))
 
 (defcustom nano-mu4e-preview t
-  "Whether to preview content of new messages.")
+  "Whether to preview content of new messages."
+  :group 'nano-mu4e
+  :type 'boolean)
 
 (defcustom nano-mu4e-header-line t
-  "Whether to use header-line (at top tof threads)")
+  "Whether to use header-line (at top tof threads)"
+  :group 'nano-mu4e
+  :type 'boolean)
 
 (defcustom nano-mu4e-symbols
   '((github     . ("[!]" . " "))
@@ -125,7 +142,10 @@ Boxed:
     (attachment . ("[A]" . " "))
     (tag        . (""    . " ")))
   "Symbols to use for various message flags.
-The fancy version of symbols relies on NERD font v3.0 (oct collection).")
+The fancy version of symbols relies on NERD font v3.0 (oct collection)."
+  :group 'nano-mu4e
+  :type '(alist (cons symbol (cons string string))))
+
 
 ;; Set mu4e-marks with NERD font v3.0 (oct collection)
 (setf (plist-get (alist-get 'refile mu4e-marks) :char)  '("(R)" . " ")
@@ -174,14 +194,14 @@ be done with a display property or spaces depending on USE-SPACE."
           (fill-column (or width (- (window-width) 1))))
       (insert fill-prefix)
       (insert text)
-      (fill-paragraph))
-    (concat
-     (string-replace "\n"
-                     (concat (propertize " " 'display `(space :align-to (- right 2)))
-                             suffix (propertize " " 'display "\n"))
-                     (buffer-substring (point-min) (point-max)))
-     (propertize " " 'display `(space :align-to (- right 2)))
-     suffix)))
+      (fill-paragraph)
+      (concat
+       (string-replace "\n"
+                       (concat (propertize " " 'display `(space :align-to (- right 2)))
+                               suffix (propertize " " 'display "\n"))
+                       (buffer-substring (point-min) (point-max)))
+       (propertize " " 'display `(space :align-to (- right 2)))
+       suffix))))
 
 (defun nano-mu4e-msg-from (msg)
   "Get MSG sender as a propertized string."
@@ -424,8 +444,6 @@ be done with a display property or spaces depending on USE-SPACE."
   ;; Could be probably simplified in order to try to avoid calling
   ;; mu4e~headers-thread-prefix which is internal
   (let* ((meta (plist-get msg :meta))
-         (is-root (nano-mu4e-msg-is-thread-root msg))
-         (level (plist-get meta :level))
          (mu4e-headers-thread-root-prefix          '(""   . ""))
          (mu4e-headers-thread-first-child-prefix   '(""   . ""))
          (mu4e-headers-thread-child-prefix         '(""   . ""))
@@ -435,14 +453,7 @@ be done with a display property or spaces depending on USE-SPACE."
          (mu4e-headers-thread-orphan-prefix        '(""   . ""))
          (mu4e-headers-thread-single-orphan-prefix '(""   . ""))
          (mu4e-headers-thread-duplicate-prefix     '(""  . ""))
-         (thread-prefix (mu4e~headers-thread-prefix meta))
-         (first-child (plist-get meta :first-child))
-         (has-child (plist-get meta :has-child))
-         (last-child (plist-get meta :last-child))
-         (is-related (nano-mu4e-msg-is-related msg))
-         (is-last (and last-child
-                       (string-empty-p thread-prefix)
-                       (not has-child))))
+         (thread-prefix (mu4e~headers-thread-prefix meta)))
     thread-prefix))
 
 (defun nano-mu4e--instrument (msglst)
@@ -533,7 +544,7 @@ For each thread root message, mark them with:
 
   (interactive)
   (let* ((msg (or msg (mu4e-message-at-point)))
-         (size (or size 64))
+         (size (or size 256))
          (filename (mu4e-message-readable-path msg)))
     (with-temp-buffer
       (insert-file-contents-literally filename)
@@ -550,7 +561,7 @@ For each thread root message, mark them with:
                 (body       (cond ((string= media-type "text/plain")
                                    (with-temp-buffer
                                      (insert (mm-decode-string content charset))
-                                     (nano-mu4e-preview--answer)))
+                                     (nano-mu4e-preview--answer size)))
                                   ((string= media-type "text/html")
                                    (with-temp-buffer
                                      (insert (mm-decode-string content charset))
@@ -632,10 +643,7 @@ It depends on the nano-mu4e-style."
 (defun nano-mu4e-subject-line (msg)
   "Return a one line describing a thread topic. MSG must be thread root."
   
-  (let* ((meta (plist-get msg :meta))
-         (flags (plist-get msg :flags))
-         (count (nano-mu4e-thread-count msg))
-         (unread-count (nano-mu4e-thread-unread-count msg))
+  (let* ((unread-count (nano-mu4e-thread-unread-count msg))
          (subject (propertize (nano-mu4e-msg-subject msg)
                               'face (if (> unread-count 0)
                                         '(mu4e-title-face bold)
@@ -661,8 +669,7 @@ It depends on the nano-mu4e-style."
   "Return a symbol to be displayed at the front of a thread subject. It
 relies on NERD font."
   
-    (let* ((meta (plist-get msg :meta))
-           (flags (plist-get msg :flags))
+    (let* ((flags (plist-get msg :flags))
            (is-list (memq 'list flags))
            (is-personal (memq 'personal flags))
            (from (mu4e-contact-email (car (mu4e-message-field msg :from))))
@@ -792,8 +799,8 @@ then call the default found handler."
                        (propertize (mu4e-last-query) )))))
       (let ((count (or count (length nano-mu4e--message-list))))
         (nano-mu4e--instrument nano-mu4e--message-list)
-        (nano-mu4e--append nano-mu4e--message-list))
-      (mu4e~headers-found-handler count))))
+        (nano-mu4e--append nano-mu4e--message-list)
+        (mu4e~headers-found-handler count)))))
 
 (defun nano-mu4e-cycle ()
   "Cycle display style"
@@ -840,7 +847,7 @@ then call the default found handler."
         (message "found %s" docid)
         (throw 'found docid)))))
 
-(defun nano-mu4e-next-msg (&optional n)
+(defun nano-mu4e-next-msg (&optional _n)
   "Move point to the next message ('from properties)"
   
   (interactive)
@@ -850,7 +857,7 @@ then call the default found handler."
         (nano-mu4e-next-msg)
       (point))))
 
-(defun nano-mu4e-prev-msg (&optional n)
+(defun nano-mu4e-prev-msg (&optional _n)
   "Move point to the previous message ('from properties)"
   
   (interactive)
@@ -874,38 +881,13 @@ then call the default found handler."
   (when-let ((prop-match (text-property-search-backward 'root t t t)))
     (goto-char (prop-match-beginning prop-match))))
 
-(defun nano-mu4e-mark-execute-all (&optional no-confirmation)
+(defun nano-mu4e-mark-execute-all (&optional _no-confirmation)
   "Make sure we're on a msg after execution."
 
   (interactive)
   (mu4e-mark-execute-all t)
   ;; (mu4e-search-rerun)
   )
-
-(defun nano-mu4e-mark-for-refile ()
-  (interactive)
-  (mu4e-headers-mark-for-refile)
-  (nano-mu4e-next-msg))
-
-(defun nano-mu4e-mark-for-delete ()
-  (interactive)
-  (mu4e-headers-mark-for-delete)
-  (nano-mu4e-next-msg))
-
-(defun nano-mu4e-mark-for-trash
-  (interactive)
-  (mu4e-headers-mark-for-trash)
-  (nano-mu4e-next-msg))
-
-(defun nano-mu4e-mark-for-trash
-  (interactive)
-  (mu4e-headers-mark-for-trash)
-  (nano-mu4e-next-msg))
-
-(defun nano-mu4e-mark-for-unmark ()
-  (interactive)
-  (mu4e-headers-mark-for-unmark)
-  (nano-mu4e-next-msg))
 
 (defun nano-mu4e-fold-toggle ()
   "Fold current thread and make sure point is on a thread"
@@ -1029,7 +1011,7 @@ then call the default found handler."
                  #'nano-mu4e-thread-fold-info)
   (advice-remove #'mu4e~headers-mark
                  #'nano-mu4e-nop)
-  (advice-remove #'mu4e-mark-at-pointk
+  (advice-remove #'mu4e-mark-at-point
                  #'nano-mu4e-mark-at-point)
 ;;  (advice-remove #'mu4e-headers-mark-and-next
 ;;                 #'nano-mu4e-headers-mark-and-next)
@@ -1047,10 +1029,6 @@ then call the default found handler."
                 (cons (kbd "<SPC>")      #'nano-mu4e-cycle)
                 (cons (kbd "p")          #'nano-mu4e-prev-thread)
                 (cons (kbd "n")          #'nano-mu4e-next-thread)
-                ;; (cons (kbd "r")          #'nano-mu4e-mark-for-refile)
-                ;; (cons (kbd "d")          #'nano-mu4e-mark-for-delete)
-                ;; (cons (kbd "D")          #'nano-mu4e-mark-for-trash)
-                ;; (cons (kbd "u")          #'nano-mu4e-mark-for-unmark)
                 (cons (kbd "x")          #'nano-mu4e-mark-execute-all)
                 (cons (kbd "<TAB>")      #'nano-mu4e-fold-toggle)
                 (cons (kbd "<backtab>")  #'nano-mu4e-fold-toggle-all))
