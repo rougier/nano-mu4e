@@ -120,11 +120,6 @@ Boxed:
   :group 'nano-mu4e
   :type 'boolean)
 
-(defcustom nano-mu4e-header-line t
-  "Whether to use header-line (at top tof threads)"
-  :group 'nano-mu4e
-  :type 'boolean)
-
 (defcustom nano-mu4e-symbols
   '((github     . ("[!]" . " "))
     (list       . ("[=]" . " "))
@@ -792,12 +787,6 @@ then call the default found handler."
 
   (when (buffer-live-p (mu4e-get-headers-buffer))
     (with-current-buffer (mu4e-get-headers-buffer)
-      (when nano-mu4e-header-line
-        (setq header-line-format
-              '(:eval (list
-                       (propertize " MAIL " 'face '(:inherit bold :inverse-video t))
-                       " "
-                       (propertize (mu4e-last-query) )))))
       (let ((count (or count (length nano-mu4e--message-list))))
         (nano-mu4e--instrument nano-mu4e--message-list)
         (nano-mu4e--append nano-mu4e--message-list)
@@ -821,18 +810,9 @@ then call the default found handler."
       (when-let* ((inhibit-read-only t)
                   (msg (mu4e-message-at-point))
                   (docid (nano-mu4e-msg-docid msg)))
-
         ;; Set our own range function for highlight
         (setq-local hl-line-range-function
                     #'nano-mu4e-headers-hl-line-range)
-
-        ;; Set header line format
-        (when nano-mu4e-header-line
-          (setq header-line-format
-                '(:eval (list
-                         (propertize " MAIL " 'face '(:inherit bold :inverse-video t))
-                         " "
-                         (propertize (mu4e-last-query) )))))
         (erase-buffer)
         (nano-mu4e-found-handler (length nano-mu4e--message-list))
         (nano-mu4e-goto-msg docid)))))
