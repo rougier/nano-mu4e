@@ -164,7 +164,8 @@ LEFT-EDGE on the left and appending RIGHT-EDGE on theright. Justification can
 be done with a display property or spaces depending on USE-SPACE."
   
   (let* ((width (window-width))
-         (has-border (memq nano-mu4e-style '(boxed compact)))
+         (has-border (and mu4e-search-threads
+                      (memq nano-mu4e-style '(boxed compact))))
          (left-edge (or left-edge (if has-border "│ " "")))
          (right-edge (or right-edge (if has-border " │" "")))
          (left (concat (propertize left-edge 'face 'nano-default)
@@ -202,7 +203,7 @@ be done with a display property or spaces depending on USE-SPACE."
 
 
 (defun nano-mu4e-make-button (text search help)
-  "Create a clickable button displaying TEXT.
+  "Create a clickable button displaying TEXT and HELP.
 When clicked, a new SEARCH is initiated."
 
   (let* ((keymap (define-keymap
@@ -279,9 +280,9 @@ When clicked, a new SEARCH is initiated."
 (defun nano-mu4e-msg-date (msg)
   "Get MSG date as a string."
 
-  ;; We want a minimal size (24 characters) for date because we'll use
+  ;; We want a minimal size (20 characters) for date because we'll use
   ;; this field to display mark target when necessary
-  (format "%24s"
+  (format "%20s"
           (let* ((date (mu4e-message-field msg :date)))
             (propertize
              (cond ((nano-mu4e-date-is-recent date)
@@ -805,21 +806,25 @@ This is suitable for displaying in the header view."
                       (t                                     'default))))
     (propertize
      (concat
+      (mu4e~headers-docid-cookie (nano-mu4e-msg-docid msg))             
       (nano-mu4e-justify
-       (list (mu4e~headers-docid-cookie (nano-mu4e-msg-docid msg))
-             (propertize (nano-mu4e-message-symbol msg) 'nano-mu4e-mark t)
+       (list (propertize (nano-mu4e-message-symbol msg) 'nano-mu4e-mark t)
              (propertize (nano-mu4e-thread-prefix msg) 'face 'shadow)
              " "
              (propertize (nano-mu4e-msg-from msg) 'face face)
              (when (nano-mu4e-msg-has-attach msg)
-               (propertize "  " 'face 'shadow)))
+               (propertize "  " 'face 'shadow))
+             (when (not mu4e-search-threads)
+               (concat " — "
+                       (propertize (nano-mu4e-msg-subject msg) 'face face))))
        (list
         (propertize (nano-mu4e-msg-date msg) 'face face
                                              'nano-mu4e-date t)))
       (when (and (nano-mu4e-msg-is-new msg) nano-mu4e-preview)
          (propertize
           (concat (propertize " " 'display "\n")
-                  (if (memq nano-mu4e-style '(boxed compact))
+                  (if (and mu4e-search-threads
+                           (memq nano-mu4e-style '(boxed compact)))
                       (nano-mu4e-fill (nano-mu4e-msg-preview msg) (- width 12) "│    ┊ " "│")
                     (nano-mu4e-fill (nano-mu4e-msg-preview msg) (- width 10) "   ┊ " "")))
           'face '(:weight regular :inherit (nano-default italic)))))
@@ -848,6 +853,7 @@ handler."
   
   (when (buffer-live-p (mu4e-get-headers-buffer))
     (with-current-buffer (mu4e-get-headers-buffer)
+      (message "MU4E thread mode: %s" 
       (setq nano-mu4e-mode t)
       (setq-local hl-line-range-function
                   #'nano-mu4e-headers-hl-line-range)
@@ -857,16 +863,18 @@ handler."
           (seq-do
            (lambda (msg)
              ;; Subject line
-             (when (nano-mu4e-msg-is-thread-root msg)
+             (when (and mu4e-search-threads
+                        (nano-mu4e-msg-is-thread-root msg))
                (insert (nano-mu4e-thread-top msg))
                (insert (nano-mu4e-subject-line msg)))
              ;; Message line
              (insert (nano-mu4e-message-line msg))
              (insert "\n")
              ;; Thread delimitation
-             (when (nano-mu4e-msg-is-thread-last msg)
+             (when (and mu4e-search-threads
+                        (nano-mu4e-msg-is-thread-last msg))
                (insert (nano-mu4e-thread-bottom msg))))
-           msglst))))))
+           msglst)))))))
 
 (defun nano-mu4e-found-handler (&optional count)
   "This function first writes all the messages in the headers buffer and
@@ -980,6 +988,7 @@ then call the default found handler."
             (prop-match-end match)))))
 
 
+;; This adds our custom view inside mu4e
 (add-to-list 'mu4e-header-info-custom
              '(:nano-mu4e . (:name "NΛNO"
                                    :shortname "NΛNO mu4e"
@@ -1014,7 +1023,7 @@ then call the default found handler."
     (when-let* ((match (text-property-search-forward 'nano-mu4e-date t t nil))
                 (overlay (make-overlay (prop-match-beginning match)
                                        (prop-match-end match))))
-      (overlay-put overlay 'display (propertize (format "%24s" target)
+      (overlay-put overlay 'display (propertize (format "%20s" target)
                                                 'face '(error bold)))
       (overlay-put overlay 'mu4e-mark t)
       (overlay-put overlay 'evaporate t))))
