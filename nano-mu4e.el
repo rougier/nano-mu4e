@@ -200,17 +200,42 @@ be done with a display property or spaces depending on USE-SPACE."
        (propertize " " 'display `(space :align-to (- right 2)))
        suffix))))
 
+
+(defun nano-mu4e-make-button (text search help)
+  "Create a clickable button displaying TEXT.
+When clicked, a new SEARCH is initiated."
+
+  (let* ((keymap (define-keymap
+                   "<mouse-2>" #'push-button
+                   "<follow-link>" 'mouse-face
+                   "<mode-line> <mouse-2>" #'push-button
+                   "<header-line> <mouse-2>" #'push-button)))
+    (propertize text
+                'pointer 'hand
+                'mouse-face `link
+                'help-echo help
+                'button t
+                'follow-link t
+                'category t
+                'button-data search
+                'keymap keymap
+                'action #'mu4e-search)))
+
 (defun nano-mu4e-msg-from (msg)
   "Get MSG sender as a propertized string."
 
   (let* ((from (car (mu4e-message-field msg :from)))
-         (from (or (mu4e-contact-name from)
-                   (mu4e-contact-email from)
-                   "<no name>")))
-    (propertize from
-                'unread (nano-mu4e-msg-is-unread msg)
-                'root (nano-mu4e-msg-is-thread-root msg)
-                'from t)))
+         (from-email (or (mu4e-contact-email from)
+                         "<no-email>"))
+         (from-name (or (mu4e-contact-name from)
+                        "<no name>"))
+         (from-name (propertize from-name
+                                'unread (nano-mu4e-msg-is-unread msg)
+                                'root (nano-mu4e-msg-is-thread-root msg)
+                                'from t)))
+    (nano-mu4e-make-button from-name
+                           (format "from:%s" from-email)
+                           (format "Search mails from %s" from-name))))
 
 (defun nano-mu4e-date-is-yesterday (date)
   "Return t if DATE is yesterday."
@@ -261,18 +286,48 @@ be done with a display property or spaces depending on USE-SPACE."
             (propertize
              (cond ((nano-mu4e-date-is-recent date)
                     "Now")
+
                    ((nano-mu4e-date-is-today date)
-                    (format-time-string "Today at %H:%M" date))
+                    (nano-mu4e-make-button
+                     (format-time-string "Today at %H:%M" date)
+                     (format-time-string "date:today..now")
+                     (format-time-string "Search mails from today")))
+
                    ((nano-mu4e-date-is-yesterday date)
-                    (format-time-string "Yesterday at %H:%M" date))
+                    (nano-mu4e-make-button
+                     (format-time-string "Yesterday at %H:%M" date)
+                     (format-time-string "date:2d..today and not date:today..now")
+                     (format-time-string "Search mails from yesterday")))
+
+                   ;; How do make a search for this week ?
                    ((nano-mu4e-date-is-this-week date)
-                    (format-time-string "%A at %H:%M" date))
-                   ((nano-mu4e-date-is-this-month date)
-                    (format-time-string "%B %d, %Y" date))
+                    (nano-mu4e-make-button
+                     (format-time-string "%A at %H:%M" date)
+                     (format-time-string "date:7d..now")
+                     (format-time-string "Search mails for last seven days")))
+                   
                    (t
-                    (format-time-string "%B %d, %Y" date)))
+                    (concat
+                     (nano-mu4e-make-button
+                      (format-time-string "%B " date)
+                      (format-time-string "date:%Y-%m" date)
+                      (format-time-string "Search mails from %B %Y" date))
+                     (nano-mu4e-make-button
+                      (format-time-string "%d, " date)
+                      (format-time-string "date:%Y-%m-%d" date)
+                      (format-time-string "Search mails from %B %d, %Y" date))
+                     (nano-mu4e-make-button
+                      (format-time-string "%Y" date)
+                      (format-time-string "date:%Y" date)
+                      (format-time-string "Search mails from %Y" date)))))
              'date t))))
 
+(defun nano-mu4e-make-tag (tag)
+  "Make a clickable TAG button"
+  (nano-mu4e-make-button tag
+                         (format "tag:%s" tag)
+                         (format "Search for tag %s" tag)))
+  
 (defun nano-mu4e-msg-tags (msg)
   "Get MSG tags as a propertized string"
 
@@ -280,7 +335,7 @@ be done with a display property or spaces depending on USE-SPACE."
          (symbol (nano-mu4e-symbol 'tag)))
     (if (> (length tags) 0)
         (propertize (concat symbol
-                            (mapconcat #'identity tags (concat " " symbol)))
+                            (mapconcat #'nano-mu4e-make-tag tags (concat " " symbol)))
                     'tags t)
     "")))
 
@@ -669,16 +724,26 @@ relies on NERD font."
   
     (let* ((flags (plist-get msg :flags))
            (is-list (memq 'list flags))
+           (list (mu4e-message-field msg :list))
            (is-personal (memq 'personal flags))
            (from (mu4e-contact-email (car (mu4e-message-field msg :from))))
            (from-github (string= from "notifications@github.com")))
       ;; Order is important
       (cond (from-github
-             (propertize (nano-mu4e-symbol 'github)   'face 'default))
+             (nano-mu4e-make-button
+              (propertize (nano-mu4e-symbol 'github)   'face 'default)
+              "from:notifications@github.com"
+              "Search mails from GitHub"))
             (is-list
-             (propertize (nano-mu4e-symbol 'list)     'face 'default))
-            (is-personal
-             (propertize (nano-mu4e-symbol 'personal) 'face 'default))
+             (nano-mu4e-make-button
+              (propertize (nano-mu4e-symbol 'list)     'face 'default)
+              (format "list:%s" list)
+              (format "Search mail from/to %s" list)))
+             (is-personal
+              (nano-mu4e-make-button
+               (propertize (nano-mu4e-symbol 'personal) 'face 'default)
+               "flag:personal"
+               "Search all mails flagged as personal"))
             (t
              (propertize (nano-mu4e-symbol 'root)     'face 'default)))))
 
@@ -688,15 +753,35 @@ relies on the NERD font."
   
   ;; Order is important
   (cond ((nano-mu4e-msg-is-unread msg)
-         (propertize (nano-mu4e-symbol 'unread) 'face 'default))
+         (nano-mu4e-make-button
+          (propertize (nano-mu4e-symbol 'unread) 'face 'default)
+          "flag:unread AND NOT flag:trashed"
+          "Search for unread mails"))
+        
         ((nano-mu4e-msg-is-flagged msg)
-         (propertize (nano-mu4e-symbol 'flagged) 'face 'mu4e-flagged-face))
+         (nano-mu4e-make-button
+          (propertize (nano-mu4e-symbol 'flagged) 'face 'mu4e-flagged-face)
+          "flag:flagged"
+          "Search for flagged mails"))
+        
         ((nano-mu4e-msg-is-draft msg)
-         (propertize (nano-mu4e-symbol 'draft) 'face 'mu4e-draft-face))
+         (nano-mu4e-make-button
+         (propertize (nano-mu4e-symbol 'draft) 'face 'mu4e-draft-face)
+         "flag:draft"
+         "Search for draft mails"))
+        
         ((nano-mu4e-msg-is-encrypted msg)
-         (propertize (nano-mu4e-symbol 'encrypted) 'face 'shadow))
+         (nano-mu4e-make-button
+          (propertize (nano-mu4e-symbol 'encrypted) 'face 'shadow)
+          "flag:encrypted"
+          "Search for encrypted mails"))
+        
         ((nano-mu4e-msg-is-signed msg)
-         (propertize (nano-mu4e-symbol 'signed) 'face 'shadow))
+         (nano-mu4e-make-button
+          (propertize (nano-mu4e-symbol 'signed) 'face 'shadow)
+          "flag:signed"
+          "Search for encrypted mails"))
+        
         ;; ((nano-mu4e-msg-is-sent msg)
         ;;   (propertize (nano-mu4e-symbol 'sent) 'face 'shadow))
         ;; ((nano-mu4e-msg-is-archived msg)
@@ -913,6 +998,8 @@ then call the default found handler."
    (nano-mu4e-next-msg))
 
 (defun nano-mu4e-mark (target &optional mark)
+  "Add MARK and TARGET to the display of message at point."
+  
   (save-excursion
     (beginning-of-line)
     (when-let* ((match (text-property-search-forward 'nano-mu4e-mark t t nil))
@@ -933,6 +1020,8 @@ then call the default found handler."
       (overlay-put overlay 'evaporate t))))
 
 (defun nano-mu4e-mark-at-point (mark target)
+  "Mark message at point with given MARK and TARGET"
+  
   (interactive)
   (let* ((msg (mu4e-message-at-point))
          (docid (mu4e-message-field msg :docid))
