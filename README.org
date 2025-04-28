@@ -18,69 +18,74 @@ Different stylaes are available
 
 ** Simple style
 
-#+begin_quote
-[L] Thread subject 1                                                      TAG-1 TAG-2 [15]
-    Initial sender                                                               Yesterday
+#+begin_src txt
+[L] Thread subject 1                                           TAG-1 TAG-2 [15]
+    Initial sender                                                    Yesterday
     [13 hidden messages]                                                               ...
-    Recipient 1                                                             Today at 10:21 
+    Recipient 1                                                  Today at 10:21 
     ┊ New message content can be displayed inside the header view.
-    Recipient 2                                                             Today at 11:07 
+    Recipient 2                                                  Today at 11:07 
 
-[P] Thread subject 2                                                             TAG-3 [1]
-    Initial sender                                                          Today at 10:32
-#+end_quote
+[P] Thread subject 2                                                  TAG-3 [1]
+    Initial sender                                               Today at 10:32
+#+end_src txt
     
 ** Regular style
 
 #+begin_src text
-──────────────────────────────────────────────────────────────────────────────────────────
-[L] Thread subject 1                                                      TAG-1 TAG-2 [15]
-    Initial sender                                                               Yesterday
-    [13 hidden messages]                                                               ...
-    Recipient 1                                                             Today at 10:21 
+───────────────────────────────────────────────────────────────────────────────
+[L] Thread subject 1                                           TAG-1 TAG-2 [15]
+    Initial sender                                                    Yesterday
+    [13 hidden messages]                                                    •••
+    Recipient                                                    Today at 10:21 
     ┊ New message content can be displayed inside the header view.
-    Recipient 2                                                             Today at 11:07 
-──────────────────────────────────────────────────────────────────────────────────────────
-[P] Thread subject 2                                                             TAG-3 [1]
-    Initial sender                                                          Today at 10:32
-──────────────────────────────────────────────────────────────────────────────────────────
+    Recipient 2                                                  Today at 11:07 
+───────────────────────────────────────────────────────────────────────────────
+[P] Thread subject 2                                                  TAG-3 [1]
+    Initial sender                                               Today at 10:32
+───────────────────────────────────────────────────────────────────────────────
 #+end_src
 
 ** Compact style
 
 #+begin_src text
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ [L] Thread subject 1                                                  TAG-1 TAG-2 [15] │
-│     Initial sender                                                           Yesterday │
-│     [13 hidden messages]                                                           ... │
-│     Recipient 1                                                         Today at 10:21 │
-│     ┊ New message content can be displayed inside the header view.                     │
-│     Recipient 2                                                         Today at 11:07 │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│ [P] Thread subject 2                                                         TAG-3 [1] │
-│     Initial sender                                                      Today at 10:32 │
-└────────────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [L] Thread subject 1                                       TAG-1 TAG-2 [15] │
+│     Initial sender                                                Yesterday │
+│     [13 hidden messages]                                                ••• │
+│     Recipient 1                                              Today at 10:21 │
+│     ┊ New message content can be displayed inside the header view.          │
+│     Recipient 2                                              Today at 11:07 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ [P] Thread subject 2                                              TAG-3 [1] │
+│     Initial sender                                           Today at 10:32 │
+└─────────────────────────────────────────────────────────────────────────────┘
 #+end_src
 
 ** Boxed style
 
 #+begin_src text
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ [L] Thread subject 1                                                  TAG-1 TAG-2 [15] │
-│     Initial sender                                                           Yesterday │
-│     [13 hidden messages]                                                           ... │
-│     Recipient 1                                                         Today at 10:21 │
-│     ┊ New message content can be displayed inside the header view.                     │
-│     Recipient 2                                                         Today at 11:07 │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ [P] Thread subject 2                                                         TAG-3 [1] │
-│     Initial sender                                                      Today at 10:32 │
-└────────────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [L] Thread subject 1                                       TAG-1 TAG-2 [15] │
+│     Initial sender                                                Yesterday │
+│     [13 hidden messages]                                                ••• │
+│     Recipient 1                                              Today at 10:21 │
+│     ┊ New message content can be displayed inside the header view.          │
+│     Recipient 2                                              Today at 11:07 │
+└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [P] Thread subject 2                                              TAG-3 [1] │
+│     Initial sender                                           Today at 10:32 │
+└─────────────────────────────────────────────────────────────────────────────┘
 #+end_src
 
 * Usage
 
+When in mu4e-headers-mode, you can type:
+
 #+begin_src emacs-lisp
 (nano-mu4e-mode)
 #+end_src emacs-lisp
+
+! Note that for the time begin, exiting the mode does not remove the
+mode key bindings for some unknown reasons (bug)
