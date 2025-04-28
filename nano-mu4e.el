@@ -139,7 +139,9 @@ Boxed:
   "Symbols to use for various message flags.
 The fancy version of symbols relies on NERD font v3.0 (oct collection)."
   :group 'nano-mu4e
-  :type '(alist (cons symbol (cons string string))))
+  :type '(alist :key-type (symbol :tag "Symbol")
+                :value-type (cons (string :tag "ASCII")
+                                  (string :tag "UNICODE"))))
 
 
 ;; Set mu4e-marks with NERD font v3.0 (oct collection)
@@ -895,7 +897,7 @@ then call the default found handler."
 
 (add-to-list 'mu4e-header-info-custom
              '(:nano-mu4e . (:name "NΛNO"
-                                   :shortname "NΛNO thread view"
+                                   :shortname "NΛNO mu4e"
                                    :function nano-mu4e-message-line)))
 
 (defun nano-mu4e-nop (&rest _args)
@@ -959,12 +961,12 @@ then call the default found handler."
         (nano-mu4e-mark shown-target markkar)
         docid))))
 
+
 (defun nano-mu4e-mode-on ()
   (setq mu4e-headers-append-func #'nano-mu4e-append-handler
         mu4e-found-func #'nano-mu4e-found-handler
         mu4e-headers-fields '((:nano-mu4e))
-        mu4e--mark-fringe ""
-        mu4e-headers-found-hook nil)
+        mu4e--mark-fringe "")
   (advice-add #'mu4e-thread-fold-info
               :override #'nano-mu4e-thread-fold-info)
   (advice-add #'mu4e~headers-mark
@@ -973,9 +975,6 @@ then call the default found handler."
               :override #'nano-mu4e-mark-at-point)
   (advice-add #'mu4e-headers-mark-and-next
               :override #'nano-mu4e-headers-mark-and-next)
-
-  ;; (advice-add #'mu4e-headers-next :after #'nano-mu4e-next-msg)
-  ;; (advice-add #'mu4e-headers-prev :after #'nano-mu4e-prev-msg)
   (mu4e-search-rerun)
   (setq nano-mu4e-mode 1))
   
@@ -994,17 +993,16 @@ then call the default found handler."
                  #'nano-mu4e-nop)
   (advice-remove #'mu4e-mark-at-point
                  #'nano-mu4e-mark-at-point)
-;;  (advice-remove #'mu4e-headers-mark-and-next
-;;                 #'nano-mu4e-headers-mark-and-next)
-    
-  ;; (advice-remove #'mu4e-headers-next #'nano-mu4e-next-msg)
-  ;; (advice-remove #'mu4e-headers-prev #'nano-mu4e-prev-msg)
+  (advice-remove #'mu4e-headers-mark-and-next
+                 #'nano-mu4e-headers-mark-and-next)
   (mu4e-search-rerun)
   (setq nano-mu4e-mode -1))
-  
+
+
+;;;###autoload
 (define-minor-mode nano-mu4e-mode
   "NΛNO mu4e headers mode"
-  
+  :init-value nil
   :keymap (list (cons (kbd "<up>")       #'nano-mu4e-prev-msg)
                 (cons (kbd "<down>")     #'nano-mu4e-next-msg)
                 (cons (kbd "<SPC>")      #'nano-mu4e-cycle)
@@ -1013,9 +1011,12 @@ then call the default found handler."
                 (cons (kbd "x")          #'nano-mu4e-mark-execute-all)
                 (cons (kbd "<TAB>")      #'nano-mu4e-fold-toggle)
                 (cons (kbd "<backtab>")  #'nano-mu4e-fold-toggle-all))
-  (if nano-mu4e-mode
-      (nano-mu4e-mode-on)
-    (nano-mu4e-mode-off)))
+
+  (if (derived-mode-p '(mu4e-headers-mode))
+      (if nano-mu4e-mode
+          (nano-mu4e-mode-on)
+        (nano-mu4e-mode-off))
+    (error "nano-mu4e mode can only be used when in mu4e-headers mode")))
    
 (provide 'nano-mu4e)
 ;;; nano-mu4e.el ends here
