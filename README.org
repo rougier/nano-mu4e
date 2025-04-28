@@ -87,5 +87,5 @@ When in mu4e-headers-mode, you can type:
 (nano-mu4e-mode)
 #+end_src emacs-lisp
 
-! Note that for the time begin, exiting the mode does not remove the
+! Note that for the time being, exiting the mode does not remove the
 mode key bindings for some unknown reasons (bug)
