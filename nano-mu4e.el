@@ -168,14 +168,14 @@ be done with a display property or spaces depending on USE-SPACE."
                       (memq nano-mu4e-style '(boxed compact))))
          (left-edge (or left-edge (if has-border "│ " "")))
          (right-edge (or right-edge (if has-border " │" "")))
-         (left (concat (propertize left-edge 'face 'nano-default)
+         (left (concat (propertize left-edge 'face 'nano-faded)
                        (if (stringp left)
                            left
                          (mapconcat #'identity left ""))))
          (right (concat (if (stringp right)
                             right
                           (mapconcat #'identity right ""))
-                        (propertize right-edge 'face 'nano-default)))
+                        (propertize right-edge 'face 'nano-faded)))
          (left (truncate-string-to-width left (- width (length right) 2) nil nil "…"))
          (padding (if use-space
                       (make-string (- (window-width) (length left) (length right) 1) ? )
@@ -229,6 +229,7 @@ When clicked, a new SEARCH is initiated."
          (from-email (or (mu4e-contact-email from)
                          "<no-email>"))
          (from-name (or (mu4e-contact-name from)
+                        (mu4e-contact-email from)
                         "<no name>"))
          (from-name (propertize from-name
                                 'unread (nano-mu4e-msg-is-unread msg)
@@ -463,18 +464,16 @@ When clicked, a new SEARCH is initiated."
 (defun nano-mu4e-thread-count (msg)
   "Return thread message count. MSG must be thread root."
 
-  (unless (nano-mu4e-msg-is-thread-root msg)
-    (error (message "MSG must be thread root")))
-  (let* ((meta (plist-get msg :meta)))
-    (plist-get meta :thread-count)))
+  (when (nano-mu4e-msg-is-thread-root msg)
+    (let* ((meta (plist-get msg :meta)))
+      (plist-get meta :thread-count))))
 
 (defun nano-mu4e-thread-unread-count (msg)
   "Return thread unread count. MSG must be thread root."
 
-  (unless (nano-mu4e-msg-is-thread-root msg)
-    (error (message "MSG must be thread root")))
-  (let* ((meta (plist-get msg :meta)))
-    (plist-get meta :thread-unread-count)))
+  (when (nano-mu4e-msg-is-thread-root msg)
+    (let* ((meta (plist-get msg :meta)))
+      (plist-get meta :thread-unread-count))))
 
 (defun nano-mu4e-thread-unread-first (msg)
   "Return thread first unread docid. MSG must be thread root."
@@ -668,10 +667,9 @@ It depends on the nano-mu4e-style."
               ""))
            
            ((and first (eq nano-mu4e-style 'regular))
-            (concat "   " (make-string (- (window-width) 4) ?─)
-                    "\n"))
+            (concat "   " (make-string (- (window-width) 4) ?─) "\n"))
            (t "")))
-   'face 'nano-default))
+   'face 'nano-faded))
 
 (defun nano-mu4e-thread-bottom (msg)
   "Delimits a thread MSG at the bottom.
@@ -691,23 +689,25 @@ It depends on the nano-mu4e-style."
              (concat "   " (make-string (- (window-width) 4) ?─) "\n"))
             (t
              "\n")))
-  'face 'nano-default))
+  'face 'nano-faded))
 
 
 (defun nano-mu4e-subject-line (msg)
   "Return a one line describing a thread topic. MSG must be thread root."
   
-  (let* ((unread-count (nano-mu4e-thread-unread-count msg))
+  (let* ((count (nano-mu4e-thread-count msg))
+         (unread-count (nano-mu4e-thread-unread-count msg))
          (subject (propertize (nano-mu4e-msg-subject msg)
                               'face (if (> unread-count 0)
                                         '(mu4e-title-face bold)
                                       'mu4e-title-face)))
          (tags (propertize (nano-mu4e-msg-tags msg)
                            'face '(org-tag bold)))
-         (count (propertize (format "[%d]" (nano-mu4e-thread-count msg))
-                            'face (if (> unread-count 0)
-                                      'bold
-                                    'default))))
+         (count (when count
+                    (propertize (format "[%d]" count)
+                                'face (if (> unread-count 0)
+                                          'bold
+                                        'default)))))
     (concat
      (nano-mu4e-justify (list (nano-mu4e-subject-symbol msg) " "  subject)
                         (list tags " " count))
@@ -1073,7 +1073,6 @@ then call the default found handler."
               :override #'nano-mu4e-mark-at-point)
   (advice-add #'mu4e-headers-mark-and-next
               :override #'nano-mu4e-headers-mark-and-next)
-  (mu4e-search-rerun)
   (setq nano-mu4e-mode 1))
   
 (defun nano-mu4e-mode-off ()
