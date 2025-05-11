@@ -120,10 +120,18 @@ Boxed:
   :group 'nano-mu4e
   :type 'boolean)
 
+(defface nano-mu4e-border-face
+  `((t :foreground ,(face-foreground 'default t 'default)))
+  "Face for thread borders")
+
+(defface nano-mu4e-preview-face
+  `((t :foreground ,(face-foreground 'default t 'default)))
+  "Face for message preview")
+
 (defcustom nano-mu4e-symbols
   '((github     . ("[!]" . " "))
     (list       . ("[=]" . " "))
-    (personal   . ("[P]" . " "))
+    (personal   . ("[P]" . " "))
     (root       . ("[+]" . " "))    
     (unread     . ("[U]" . " "))
     (flagged    . ("[F]" . " "))
@@ -168,14 +176,14 @@ be done with a display property or spaces depending on USE-SPACE."
                       (memq nano-mu4e-style '(boxed compact))))
          (left-edge (or left-edge (if has-border "│ " "")))
          (right-edge (or right-edge (if has-border " │" "")))
-         (left (concat (propertize left-edge 'face 'nano-faded)
+         (left (concat (propertize left-edge 'face 'nano-mu4e-border-face)
                        (if (stringp left)
                            left
                          (mapconcat #'identity left ""))))
          (right (concat (if (stringp right)
                             right
                           (mapconcat #'identity right ""))
-                        (propertize right-edge 'face 'nano-faded)))
+                        (propertize right-edge 'face 'nano-mu4e-border-face)))
          (left (truncate-string-to-width left (- width (length right) 2) nil nil "…"))
          (padding (if use-space
                       (make-string (- (window-width) (length left) (length right) 1) ? )
@@ -187,16 +195,17 @@ be done with a display property or spaces depending on USE-SPACE."
   "Refill TEXT to given WIDTH (characters) using PREFIX for each line."
   
   (with-temp-buffer
-    (let ((suffix (or suffix ""))
-          (fill-prefix (or prefix ""))
-          (fill-column (or width (- (window-width) 1))))
-      (insert fill-prefix)
+    (let* ((suffix (or suffix ""))
+           (prefix (or prefix ""))
+           (fill-column (or width (- (window-width) 1 (length prefix)))))
       (insert text)
       (fill-paragraph)
+
       (concat
+       prefix
        (string-replace "\n"
                        (concat (propertize " " 'display `(space :align-to (- right 2)))
-                               suffix (propertize " " 'display "\n"))
+                               suffix (propertize " " 'display (concat "\n" prefix)))
                        (buffer-substring (point-min) (point-max)))
        (propertize " " 'display `(space :align-to (- right 2)))
        suffix))))
@@ -669,7 +678,7 @@ It depends on the nano-mu4e-style."
            ((and first (eq nano-mu4e-style 'regular))
             (concat "   " (make-string (- (window-width) 4) ?─) "\n"))
            (t "")))
-   'face 'nano-faded))
+   'face 'nano-mu4e-border-face))
 
 (defun nano-mu4e-thread-bottom (msg)
   "Delimits a thread MSG at the bottom.
@@ -689,7 +698,7 @@ It depends on the nano-mu4e-style."
              (concat "   " (make-string (- (window-width) 4) ?─) "\n"))
             (t
              "\n")))
-  'face 'nano-faded))
+  'face 'nano-mu4e-border-face))
 
 
 (defun nano-mu4e-subject-line (msg)
@@ -822,12 +831,22 @@ This is suitable for displaying in the header view."
                                              'nano-mu4e-date t)))
       (when (and (nano-mu4e-msg-is-new msg) nano-mu4e-preview)
          (propertize
-          (concat (propertize " " 'display "\n")
+          (concat (propertize " " 'display "\n" 'face 'nano-mu4e-preview-face)
                   (if (and mu4e-search-threads
                            (memq nano-mu4e-style '(boxed compact)))
-                      (nano-mu4e-fill (nano-mu4e-msg-preview msg) (- width 12) "│    ┊ " "│")
-                    (nano-mu4e-fill (nano-mu4e-msg-preview msg) (- width 10) "   ┊ " "")))
-          'face '(:weight regular :inherit (nano-default italic)))))
+                      (nano-mu4e-fill
+                          (propertize (nano-mu4e-msg-preview msg) 'face 'nano-mu4e-preview-face)
+                          (- width 12)
+                          (concat (propertize "│    " 'face 'nano-mu4e-border-face)
+                                  (propertize "┊ "    'face 'nano-mu4e-preview-face))
+                          (propertize "│"  'face 'nano-mu4e-border-face))
+                    (nano-mu4e-fill
+                          (propertize (nano-mu4e-msg-preview msg)  'face 'nano-mu4e-preview-face)
+                          (- width 10)
+                          (propertize "   ┊ " 'face 'nano-mu4e-preview-face)
+                          "")))
+          ;;          'face '(:weight regular :inherit (nano-default italic))
+          )))
       'msg msg)))
 
 (defvar-local nano-mu4e--message-list nil
