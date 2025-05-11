@@ -608,9 +608,13 @@ For each thread root message, mark them with:
   (let* ((msg (or msg (mu4e-message-at-point)))
          (size (or size 256))
          (filename (mu4e-message-readable-path msg)))
+
+    (with-current-buffer (get-buffer-create (format "file-%s" filename))
+            (insert-file-contents-literally filename))
+      
     (with-temp-buffer
       (insert-file-contents-literally filename)
-      (if-let* ((handles (mm-dissect-buffer t))
+      (let* ((handles (mm-dissect-buffer t))
                 (handle (if (eq (type-of (car handles)) 'buffer)
                             handles
                           (or (mm-find-part-by-type (cdr handles) "text/plain" nil t)
@@ -629,9 +633,8 @@ For each thread root message, mark them with:
                                      (insert (mm-decode-string content charset))
                                      (shr-render-region (point-min) (point-max))
                                      (nano-mu4e-preview--answer)))
-                                  (t ""))))
-          body
-        ""))))
+                                  (t "No message body found"))))
+          body))))
 
 (defun nano-mu4e-preview--answer (&optional size)
   "Return actual answer in current buffer, limiting it to SIZE characters."
@@ -649,8 +652,12 @@ For each thread root message, mark them with:
     (message-goto-body)
     ;; Go to greetings (if any)
     (re-search-forward greetings-re nil t)
+
     ;; We should skip citations here
-    ;; ...
+    (while (and (not (eobp))       ; not at end of buffer
+                (looking-at "^>")) ; line starts with '>'
+      (forward-line 1))
+
     ;; Go to first sentence starting with a letter
     (re-search-forward "^[A-Za-z]+" nil t)
     (beginning-of-line)
