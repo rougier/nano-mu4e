@@ -913,6 +913,16 @@ then call the default found handler."
         (nano-mu4e--append nano-mu4e--message-list)
         (mu4e~headers-found-handler count)))))
 
+
+(defun nano-mu4e-mark-as-new (&optional msg)
+  "Mark as MSG as new"
+  
+  (interactive)
+  (let* ((msg (or msg (mu4e-message-at-point)))
+         (docid (plist-get msg :docid)))
+    (when docid
+      (mu4e--server-move docid nil "+U+N-S"))))
+  
 (defun nano-mu4e-cycle ()
   "Cycle display style"
   
