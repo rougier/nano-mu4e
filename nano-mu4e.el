@@ -115,10 +115,10 @@ Boxed:
                  (const :tag "Compact" compact)
                  (const :tag "Boxed" boxed)))
 
-(defcustom nano-mu4e-preview t
+(defcustom nano-mu4e-msg-preview-func #'nano-mu4e-msg-preview-p
   "Whether to preview content of new messages."
   :group 'nano-mu4e
-  :type 'boolean)
+  :type 'func)
 
 (defface nano-mu4e-border-face
   `((t :foreground ,(face-foreground 'default t 'default)))
@@ -135,6 +135,7 @@ Boxed:
     (root       . ("[+]" . " "))    
     (unread     . ("[U]" . " "))
     (flagged    . ("[F]" . " "))
+    (new        . ("[N]" . "󰝧 "))
     (draft      . ("[D]" . " "))
     (signed     . ("[S]" . " "))
     (encrypted  . ("[E]" . " "))
@@ -150,7 +151,6 @@ The fancy version of symbols relies on NERD font v3.0 (oct collection)."
   :type '(alist :key-type (symbol :tag "Symbol")
                 :value-type (cons (string :tag "ASCII")
                                   (string :tag "UNICODE"))))
-
 
 ;; Set mu4e-marks with NERD font v3.0 (oct collection)
 (setf (plist-get (alist-get 'refile mu4e-marks) :char)  '("(R)" . " ")
@@ -601,6 +601,13 @@ For each thread root message, mark them with:
     ;; Mark first message
     (plist-put (plist-get (car msglst) :meta) :is-first t)))
 
+(defun nano-mu4e-msg-preview-p (msg)
+  "Return t if message preview is required"
+
+  (and (nano-mu4e-msg-is-new msg)
+       (nano-mu4e-msg-is-personal msg)
+       (not (nano-mu4e-msg-is-list msg))))
+  
 (defun nano-mu4e-msg-preview (&optional msg size)
   "Extract answer from MSG , limiting it to SIZE characters"
 
@@ -724,10 +731,13 @@ It depends on the nano-mu4e-style."
                                 'face (if (> unread-count 0)
                                           'bold
                                         'default)))))
-    (concat
-     (nano-mu4e-justify (list (nano-mu4e-subject-symbol msg) " "  subject)
-                        (list tags " " count))
-     "\n")))
+    (propertize
+     (concat
+      (nano-mu4e-justify (list (nano-mu4e-subject-symbol msg) " "  subject)
+                         (list tags " " count))
+      "\n")
+     ;; 'msg msg
+     )))
 
 
 (defun nano-mu4e-symbol (symbol)
@@ -769,7 +779,13 @@ relies on NERD font."
 relies on the NERD font."
   
   ;; Order is important
-  (cond ((nano-mu4e-msg-is-unread msg)
+  (cond ((nano-mu4e-msg-is-new msg)
+         (nano-mu4e-make-button
+          (propertize (nano-mu4e-symbol 'new) 'face 'nano-critical)
+          "flag:new AND NOT flag:trashed"
+          "Search for new mails"))
+        
+        ((nano-mu4e-msg-is-unread msg)
          (nano-mu4e-make-button
           (propertize (nano-mu4e-symbol 'unread) 'face 'default)
           "flag:unread AND NOT flag:trashed"
@@ -836,7 +852,7 @@ This is suitable for displaying in the header view."
        (list
         (propertize (nano-mu4e-msg-date msg) 'face face
                                              'nano-mu4e-date t)))
-      (when (and (nano-mu4e-msg-is-new msg) nano-mu4e-preview)
+      (when (funcall nano-mu4e-msg-preview-func msg)
          (propertize
           (concat (propertize " " 'display "\n" 'face 'nano-mu4e-preview-face)
                   (if (and mu4e-search-threads
@@ -911,8 +927,15 @@ then call the default found handler."
       (let ((count (or count (length nano-mu4e--message-list))))
         (nano-mu4e--instrument nano-mu4e--message-list)
         (nano-mu4e--append nano-mu4e--message-list)
-        (mu4e~headers-found-handler count)))))
-
+        (mu4e~headers-found-handler count)
+        (goto-char (point-min))
+        (if (and (boundp 'nano-mu4e--docid) nano-mu4e--docid)
+            (unless (nano-mu4e-goto-msg nano-mu4e--docid)
+              (goto-char (point-min))
+              (nano-mu4e-next-msg))
+          (nano-mu4e-next-msg))     
+        (when hl-line-mode
+          (hl-line-highlight))))))
 
 (defun nano-mu4e-mark-as-new (&optional msg)
   "Mark as MSG as new"
@@ -921,8 +944,16 @@ then call the default found handler."
   (let* ((msg (or msg (mu4e-message-at-point)))
          (docid (plist-get msg :docid)))
     (when docid
-      (mu4e--server-move docid nil "+U+N-S"))))
-  
+      (mu4e--server-move docid nil "N"))))
+
+(defun nano-mu4e-check-cursor ()
+  "Check if cursor is beyond messages and move point to the last msg if
+this is the case."
+
+  (interactive)
+  (when (eobp)
+    (nano-mu4e-prev-msg)))
+
 (defun nano-mu4e-cycle ()
   "Cycle display style"
   
@@ -953,11 +984,13 @@ then call the default found handler."
   
   (interactive)
   (goto-char (point-min))
-  (catch 'found
-    (while (nano-mu4e-next-msg)
-      (when (eq (nano-mu4e-msg-docid (mu4e-message-at-point)) docid)
-        (message "found %s" docid)
-        (throw 'found docid)))))
+  (let ((found))
+    (catch 'found
+      (while (nano-mu4e-next-msg)
+        (when (eq (nano-mu4e-msg-docid (mu4e-message-at-point)) docid)
+          (setq found t)
+          (throw 'found docid))))
+    found))
 
 (defun nano-mu4e-next-msg (&optional _n)
   "Move point to the next message ('from properties)"
@@ -1029,6 +1062,13 @@ then call the default found handler."
              '(:nano-mu4e . (:name "NΛNO"
                                    :shortname "NΛNO mu4e"
                                    :function nano-mu4e-message-line)))
+
+(defun nano-mu4e-search-rerun (&rest _args)
+  "Save the current docid"
+  
+  (let* ((msg (mu4e-message-at-point t))
+         (docid (nano-mu4e-msg-docid msg)))
+    (setq nano-mu4e--docid docid)))
 
 (defun nano-mu4e-nop (&rest _args)
   "Do nothing")
@@ -1103,6 +1143,10 @@ then call the default found handler."
         mu4e--mark-fringe "")
   (advice-add #'mu4e-thread-fold-info
               :override #'nano-mu4e-thread-fold-info)
+  (advice-add #'mu4e-search-rerun
+              :before #'nano-mu4e-search-rerun)
+  (advice-add #'mu4e-search-bookmark
+              :before #'nano-mu4e-search-rerun)
   (advice-add #'mu4e~headers-mark
               :override #'nano-mu4e-nop)
   (advice-add #'mu4e-mark-at-point
@@ -1122,6 +1166,10 @@ then call the default found handler."
         mu4e--mark-fringe "")
   (advice-remove #'mu4e-thread-fold-info
                  #'nano-mu4e-thread-fold-info)
+  (advice-remove #'mu4e-search-rerun
+                 #'nano-mu4e-search-rerun)
+  (advice-remove #'mu4e-search-bookmark
+                 #'nano-mu4e-search-rerun)
   (advice-remove #'mu4e~headers-mark
                  #'nano-mu4e-nop)
   (advice-remove #'mu4e-mark-at-point
@@ -1139,6 +1187,7 @@ then call the default found handler."
   :keymap (list (cons (kbd "<up>")       #'nano-mu4e-prev-msg)
                 (cons (kbd "<down>")     #'nano-mu4e-next-msg)
                 (cons (kbd "<SPC>")      #'nano-mu4e-cycle)
+                (cons (kbd "<mouse-1>")  #'nano-mu4e-check-cursor)
                 (cons (kbd "p")          #'nano-mu4e-prev-thread)
                 (cons (kbd "n")          #'nano-mu4e-next-thread)
                 (cons (kbd "x")          #'nano-mu4e-mark-execute-all)
