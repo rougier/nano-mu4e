@@ -116,7 +116,7 @@ Boxed:
                  (const :tag "Boxed" boxed)))
 
 (defcustom nano-mu4e-msg-preview-func #'nano-mu4e-msg-preview-p
-  "Whether to preview content of new messages."
+  "Function pointer to decide whether to preview content of a message"
   :group 'nano-mu4e
   :type 'func)
 
@@ -125,7 +125,7 @@ Boxed:
   "Face for thread borders")
 
 (defface nano-mu4e-preview-face
-  `((t :foreground ,(face-foreground 'default t 'default)))
+  `((t :foreground ,(face-foreground 'shadow t 'default)))
   "Face for message preview")
 
 (defcustom nano-mu4e-symbols
@@ -156,12 +156,12 @@ The fancy version of symbols relies on NERD font v3.0 (oct collection)."
 (setf (plist-get (alist-get 'refile mu4e-marks) :char)  '("(R)" . " ")
       (plist-get (alist-get 'move mu4e-marks) :char)    '("(M)" . " ")
       (plist-get (alist-get 'tag mu4e-marks) :char)     '("(T)" . " ")
-      (plist-get (alist-get 'action mu4e-marks) :char)  '("(A)" . " ")
+      (plist-get (alist-get 'action mu4e-marks) :char)  '("(A)" . " ")
       (plist-get (alist-get 'delete mu4e-marks) :char)  '("(D)" . " ")
       (plist-get (alist-get 'flag mu4e-marks) :char)    '("(F)" . " ")
       (plist-get (alist-get 'unflag mu4e-marks) :char)  '("(F)" . " ")
-      (plist-get (alist-get 'read mu4e-marks) :char)    '("(!)" . " ")
-      (plist-get (alist-get 'unread mu4e-marks) :char)  '("(!)" . " ")
+      (plist-get (alist-get 'read mu4e-marks) :char)    '("(!)" . " ")
+      (plist-get (alist-get 'unread mu4e-marks) :char)  '("(!)" . " ")
       (plist-get (alist-get 'trash mu4e-marks) :char)   '("(x)" . " ")
       (plist-get (alist-get 'untrash mu4e-marks) :char) '("(x)" . " "))
 
@@ -602,11 +602,13 @@ For each thread root message, mark them with:
     (plist-put (plist-get (car msglst) :meta) :is-first t)))
 
 (defun nano-mu4e-msg-preview-p (msg)
-  "Return t if message preview is required"
+  "Return t if message is new, and not from a list or GitHub."
 
-  (and (nano-mu4e-msg-is-new msg)
-       (nano-mu4e-msg-is-personal msg)
-       (not (nano-mu4e-msg-is-list msg))))
+  (let* ((new (nano-mu4e-msg-is-new msg))
+         (from (mu4e-contact-email (car (mu4e-message-field msg :from))))
+         (from-github (string= from "notifications@github.com"))
+         (from-list (nano-mu4e-msg-is-list msg)))
+    (and new (not from-github) (not from-list))))
   
 (defun nano-mu4e-msg-preview (&optional msg size)
   "Extract answer from MSG , limiting it to SIZE characters"
@@ -616,8 +618,8 @@ For each thread root message, mark them with:
          (size (or size 256))
          (filename (mu4e-message-readable-path msg)))
 
-    (with-current-buffer (get-buffer-create (format "file-%s" filename))
-            (insert-file-contents-literally filename))
+    ;; (with-current-buffer (get-buffer-create (format "file-%s" filename))
+    ;;  (insert-file-contents-literally filename))
       
     (with-temp-buffer
       (insert-file-contents-literally filename)
@@ -715,7 +717,7 @@ It depends on the nano-mu4e-style."
   'face 'nano-mu4e-border-face))
 
 
-(defun nano-mu4e-subject-line (msg)
+(defun nano-mu4e-subject-line (msg &optional index)
   "Return a one line describing a thread topic. MSG must be thread root."
   
   (let* ((count (nano-mu4e-thread-count msg))
@@ -733,7 +735,8 @@ It depends on the nano-mu4e-style."
                                         'default)))))
     (propertize
      (concat
-      (nano-mu4e-justify (list (nano-mu4e-subject-symbol msg) " "  subject)
+       (nano-mu4e-justify (list (nano-mu4e-subject-symbol msg) " "  subject)
+;;      (nano-mu4e-justify (list (format "%-2d " index) subject)
                          (list tags " " count))
       "\n")
      ;; 'msg msg
@@ -840,7 +843,8 @@ This is suitable for displaying in the header view."
      (concat
       (mu4e~headers-docid-cookie (nano-mu4e-msg-docid msg))             
       (nano-mu4e-justify
-       (list (propertize (nano-mu4e-message-symbol msg) 'nano-mu4e-mark t)
+       (list ;; "  "
+             (propertize (nano-mu4e-message-symbol msg) 'nano-mu4e-mark t)
              (propertize (nano-mu4e-thread-prefix msg) 'face 'shadow)
              " "
              (propertize (nano-mu4e-msg-from msg) 'face face)
@@ -902,13 +906,17 @@ handler."
       (save-excursion
         (let ((inhibit-read-only t))
           (goto-char (point-max))
+
+          ;;(seq-map-indexed
+          (setq index 1)
           (seq-do
            (lambda (msg)
              ;; Subject line
              (when (and mu4e-search-threads
                         (nano-mu4e-msg-is-thread-root msg))
                (insert (nano-mu4e-thread-top msg))
-               (insert (nano-mu4e-subject-line msg)))
+               (insert (nano-mu4e-subject-line msg index))
+               (setq index (1+ index)))
              ;; Message line
              (insert (nano-mu4e-message-line msg))
              (insert "\n")
@@ -1002,6 +1010,17 @@ this is the case."
         (nano-mu4e-next-msg)
       (point))))
 
+(defun nano-mu4e-next-unread-msg (&optional _n)
+  "Move point to the next message ('from properties)"
+  
+  (interactive)
+  (when-let ((prop-match (text-property-search-forward 'from t t t)))
+    (goto-char (prop-match-beginning prop-match))
+    (if (or (not (nano-mu4e-msg-is-unread (mu4e-message-at-point)))
+            (get-char-property (point) 'mu4e-thread-folded))
+        (nano-mu4e-next-unread-msg)
+      (point))))
+
 (defun nano-mu4e-prev-msg (&optional _n)
   "Move point to the previous message ('from properties)"
   
@@ -1010,6 +1029,17 @@ this is the case."
     (goto-char (prop-match-beginning prop-match))
     (if (get-char-property (point) 'mu4e-thread-folded)
         (nano-mu4e-prev-msg)
+      (point))))
+
+(defun nano-mu4e-prev-unread-msg (&optional _n)
+  "Move point to the previous message ('from properties)"
+  
+  (interactive)
+  (when-let ((prop-match (text-property-search-backward 'from t t t)))
+    (goto-char (prop-match-beginning prop-match))
+    (if (or (not (nano-mu4e-msg-is-unread (mu4e-message-at-point)))
+            (get-char-property (point) 'mu4e-thread-folded))
+        (nano-mu4e-prev-unread-msg)
       (point))))
 
 (defun nano-mu4e-next-thread ()
@@ -1186,10 +1216,12 @@ this is the case."
   :init-value nil
   :keymap (list (cons (kbd "<up>")       #'nano-mu4e-prev-msg)
                 (cons (kbd "<down>")     #'nano-mu4e-next-msg)
-                (cons (kbd "<SPC>")      #'nano-mu4e-cycle)
+                (cons (kbd "S-<up>")     #'nano-mu4e-prev-thread)
+                (cons (kbd "S-<down>")   #'nano-mnnu4e-next-thread)
+                (cons (kbd "<SPC>")      #'nano-mu4e-mark-as-new)
                 (cons (kbd "<mouse-1>")  #'nano-mu4e-check-cursor)
-                (cons (kbd "p")          #'nano-mu4e-prev-thread)
-                (cons (kbd "n")          #'nano-mu4e-next-thread)
+                (cons (kbd "p")          #'nano-mu4e-prev-unread-msg)
+                (cons (kbd "n")          #'nano-mu4e-next-unread-msg)
                 (cons (kbd "x")          #'nano-mu4e-mark-execute-all)
                 (cons (kbd "<TAB>")      #'nano-mu4e-fold-toggle)
                 (cons (kbd "<backtab>")  #'nano-mu4e-fold-toggle-all))
