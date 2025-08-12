@@ -115,7 +115,7 @@ Boxed:
                  (const :tag "Compact" compact)
                  (const :tag "Boxed" boxed)))
 
-(defcustom nano-mu4e-msg-preview-func #'nano-mu4e-msg-preview-p
+(defcustom nano-mu4e-msg-preview-func nil ;; #'nano-mu4e-msg-preview-p
   "Function pointer to decide whether to preview content of a message"
   :group 'nano-mu4e
   :type 'func)
@@ -856,7 +856,8 @@ This is suitable for displaying in the header view."
        (list
         (propertize (nano-mu4e-msg-date msg) 'face face
                                              'nano-mu4e-date t)))
-      (when (funcall nano-mu4e-msg-preview-func msg)
+      (when (and nano-mu4e-msg-preview-func
+                 (funcall nano-mu4e-msg-preview-func msg))
          (propertize
           (concat (propertize " " 'display "\n" 'face 'nano-mu4e-preview-face)
                   (if (and mu4e-search-threads
