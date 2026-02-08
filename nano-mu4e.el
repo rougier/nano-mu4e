@@ -489,16 +489,39 @@ When clicked, a new SEARCH is initiated."
     (plist-get meta :is-last)))
 
 (defun nano-mu4e-thread-fold-info (count unread)
-  "Information to display when a thread is folded."
-
-  (let ((text (propertize (format "[%d hidden messages%s]" count
-                                  (if (> unread 0) (format ", %d unread" unread) ""))
-                          'face 'error))
-        (ellipsis (propertize "•••" 'face 'error)))
-    (concat (nano-mu4e-justify (list "   " text)
-                               (list ellipsis)
-                               nil nil t) "\n")))
-   
+  "Return a string divider with COUNT hidden messages, spanning the window width."
+  (let* ((window-width (window-width))
+         (message (format " %d hidden messages " count))
+         (msg-length (length message))
+         (left-edge (if (memq nano-mu4e-style '(boxed compact))
+                        "├"
+                      "   ╴"))
+         (right-edge (if (memq nano-mu4e-style '(boxed compact))
+                        "┤"
+                       "╴"))
+         (line-char "╴")
+         (remaining (- window-width
+                       1
+                       (length left-edge)
+                       msg-length
+                       (length right-edge)))
+         (half (/ remaining 2))
+         (line-left (make-string half (string-to-char line-char)))
+         (line-right (make-string (- remaining half) (string-to-char line-char))))
+    (concat (propertize left-edge 'face
+                        (if (memq nano-mu4e-style '(boxed compact))
+                            'default
+                          'shadow))
+            (propertize (concat line-left
+                                message
+                                line-right)
+                        'face 'shadow)
+            (propertize right-edge 'face
+                        (if (memq nano-mu4e-style '(boxed compact))
+                            'default
+                          'shadow))
+             "\n")))
+  
 (defun nano-mu4e-msg-is-thread-root (msg)
   "Return whether MSG is thread root."
 
