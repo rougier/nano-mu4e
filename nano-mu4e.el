@@ -919,10 +919,10 @@ This is suitable for displaying in the header view."
      (concat
       (mu4e~headers-docid-cookie (nano-mu4e-msg-docid msg))             
       (nano-mu4e-justify
-       (list ;; "  "
+       (list ;; "   "
              (propertize (nano-mu4e-message-symbol msg) 'nano-mu4e-mark t)
              (propertize (nano-mu4e-thread-prefix msg) 'face 'shadow)
-             " "
+             (propertize " " 'face face)
              (propertize (nano-mu4e-msg-from msg) 'face face)
              (when (nano-mu4e-msg-has-attach msg)
                (propertize "  " 'face 'shadow))
