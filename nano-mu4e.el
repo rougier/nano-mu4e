@@ -1311,7 +1311,15 @@ this is the case."
           (nano-mu4e-mode-on)
         (nano-mu4e-mode-off))
     (error "nano-mu4e mode can only be used when in mu4e-headers mode")))
-   
+
+;;;###autoload
+(defun nano-mu4e ()
+  "Start mu4e in the background and search for bookmark ?i"
+  (interactive)
+  (mu4e t)
+  (mu4e-search (mu4e-get-bookmark-query ?i)))
+
+
 (provide 'nano-mu4e)
 ;;; nano-mu4e.el ends here
 
