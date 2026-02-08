@@ -1159,10 +1159,12 @@ this is the case."
 
 (defun nano-mu4e-headers-hl-line-range ()
   (save-excursion
-    (when-let ((match (text-property-search-forward 'from t t nil)))
-      (cons (prop-match-beginning match)
-            (prop-match-end match)))))
-
+    (when-let ((match (text-property-search-forward 'from t t nil))
+               (beg (prop-match-beginning match))
+               (match (text-property-search-forward 'date t t nil))
+               (match (text-property-search-forward 'date nil t nil))
+               (end (prop-match-beginning match)))
+      (cons beg end))))
 
 ;; This adds our custom view inside mu4e
 (add-to-list 'mu4e-header-info-custom
@@ -1244,10 +1246,10 @@ this is the case."
 
 
 (defun nano-mu4e-mode-on ()
-  (setq mu4e-headers-append-func #'nano-mu4e-append-handler
-        mu4e-found-func #'nano-mu4e-found-handler
-        mu4e-headers-fields '((:nano-mu4e))
-        mu4e--mark-fringe "")
+   (setq mu4e-headers-append-func #'nano-mu4e-append-handler
+         mu4e-found-func #'nano-mu4e-found-handler
+         mu4e-headers-fields '((:nano-mu4e))
+         mu4e--mark-fringe "")
   (advice-add #'mu4e-thread-fold-info
               :override #'nano-mu4e-thread-fold-info)
   (advice-add #'mu4e-search-rerun
@@ -1300,6 +1302,7 @@ this is the case."
                 (cons (kbd "p")          #'nano-mu4e-prev-unread-msg)
                 (cons (kbd "n")          #'nano-mu4e-next-unread-msg)
                 (cons (kbd "x")          #'nano-mu4e-mark-execute-all)
+                (cons (kbd ":")          #'nano-mu4e-cycle)
                 (cons (kbd "<TAB>")      #'nano-mu4e-fold-toggle)
                 (cons (kbd "<backtab>")  #'nano-mu4e-fold-toggle-all))
 
