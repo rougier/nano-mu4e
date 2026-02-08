@@ -690,25 +690,28 @@ For each thread root message, mark them with:
     (with-temp-buffer
       (insert-file-contents-literally filename)
       (let* ((handles (mm-dissect-buffer t))
-                (handle (if (eq (type-of (car handles)) 'buffer)
-                            handles
-                          (or (mm-find-part-by-type (cdr handles) "text/plain" nil t)
-                              (mm-find-part-by-type (cdr handles) "text/html" nil t))))
-                (media-type (mm-handle-media-type handle))
-                (type       (mm-handle-type handle))
-                (charset    (mail-content-type-get type 'charset))
-                (buffer     (mm-handle-buffer handle))
-                (content    (mm-get-part handle))
-                (body       (cond ((string= media-type "text/plain")
-                                   (with-temp-buffer
-                                     (insert (mm-decode-string content charset))
-                                     (nano-mu4e-preview--answer size)))
-                                  ((string= media-type "text/html")
-                                   (with-temp-buffer
-                                     (insert (mm-decode-string content charset))
-                                     (shr-render-region (point-min) (point-max))
-                                     (nano-mu4e-preview--answer)))
-                                  (t "No message body found"))))
+             (body "No message body found"))
+        (unwind-protect
+            (let* ((handle (if (eq (type-of (car handles)) 'buffer)
+                               handles
+                             (or (mm-find-part-by-type (cdr handles) "text/plain" nil t)
+                                 (mm-find-part-by-type (cdr handles) "text/html" nil t))))
+                   (media-type (mm-handle-media-type handle))
+                   (type       (mm-handle-type handle))
+                   (charset    (mail-content-type-get type 'charset))
+                   (buffer     (mm-handle-buffer handle))
+                   (content    (mm-get-part handle)))
+              (setq body (cond ((string= media-type "text/plain")
+                                (with-temp-buffer
+                                  (insert (mm-decode-string content charset))
+                                  (nano-mu4e-preview--answer size)))
+                               ((string= media-type "text/html")
+                                (with-temp-buffer
+                                  (insert (mm-decode-string content charset))
+                                  (shr-render-region (point-min) (point-max))
+                                  (nano-mu4e-preview--answer)))
+                               (t "No message body found"))))
+              (mm-destroy-parts handles))
           body))))
 
 (defun nano-mu4e-preview--answer (&optional size)
@@ -758,7 +761,7 @@ It depends on the nano-mu4e-style."
               ""))
            
            ((and first (eq nano-mu4e-style 'regular))
-            (concat "   " (make-string (- (window-width) 4) ?─) "\n"))
+            (concat "───" (make-string (- (window-width) 4) ?─) "\n"))
            (t "")))
    'face 'nano-mu4e-border-face))
 
@@ -777,7 +780,7 @@ It depends on the nano-mu4e-style."
             (concat "└" (make-string (- (window-width) 3) ?─) "┘" "\n"))
 
             ((eq nano-mu4e-style 'regular)
-             (concat "   " (make-string (- (window-width) 4) ?─) "\n"))
+             (concat "" (make-string (- (window-width) 1) ?─) "\n"))
             (t
              "\n")))
   'face 'nano-mu4e-border-face))
@@ -790,58 +793,65 @@ It depends on the nano-mu4e-style."
          (unread-count (nano-mu4e-thread-unread-count msg))
          (subject (propertize (nano-mu4e-msg-subject msg)
                               'face (if (> unread-count 0)
-                                        '(mu4e-title-face bold)
+                                        'mu4e-title-face
                                       'mu4e-title-face)))
-         (tags (propertize (nano-mu4e-msg-tags msg)
-                           'face '(org-tag bold)))
-         (count (when count
-                    (propertize (format "[%d]" count)
-                                'face (if (> unread-count 0)
-                                          'bold
-                                        'default)))))
+         (tags (nano-mu4e-msg-tags msg))
+         (face `( :foreground ,(face-background 'default nil 'default)
+                  :background ,(face-foreground 'default nil 'default)
+                  :inherit bold))
+         (count (if count
+                  (if (> unread-count 0)
+                      (propertize (format " %d " count)
+                                  'face face)
+                    (propertize (format " %d " count)
+                                'face '(widget-field bold)))
+                  "")))
     (propertize
      (concat
-       (nano-mu4e-justify (list (nano-mu4e-subject-symbol msg) " "  subject)
-;;      (nano-mu4e-justify (list (format "%-2d " index) subject)
+      (nano-mu4e-justify (list
+                          ;; (nano-mu4e-subject-symbol msg) " "
+                          subject)
                          (list tags " " count))
-      "\n")
-     ;; 'msg msg
-     )))
-
+       "\n"))))
 
 (defun nano-mu4e-symbol (symbol)
   "Return the given SYMBOL"
 
   (cdr (alist-get symbol nano-mu4e-symbols)))
 
+;; (defun nano-mu4e-subject-symbol (msg)
+;;   "Return a symbol to be displayed at the front of a thread subject. It
+;; relies on NERD font."
+  
+;;     (let* ((flags (plist-get msg :flags))
+;;            (is-list (memq 'list flags))
+;;            (list (mu4e-message-field msg :list))
+;;            (is-personal (memq 'personal flags))
+;;            (from (mu4e-contact-email (car (mu4e-message-field msg :from))))
+;;            (from-github (string= from "notifications@github.com")))
+;;       ;; Order is important
+;;       (cond (from-github
+;;              (nano-mu4e-make-button
+;;               (propertize (nano-mu4e-symbol 'github) 'face 'default)
+;;               "from:notifications@github.com"
+;;               "Search mails from GitHub"))
+;;             (is-list
+;;              (nano-mu4e-make-button
+;;               (propertize (nano-mu4e-symbol 'list) 'face 'default)
+;;               (format "list:%s" list)
+;;               (format "Search mail from/to %s" list)))
+;;              (is-personal
+;;               (nano-mu4e-make-button
+;;                (propertize (nano-mu4e-symbol 'personal) 'face 'default)
+;;                "flag:personal"
+;;                "Search all mails flagged as personal"))
+;;             (t
+;;              (propertize (nano-mu4e-symbol 'root) 'face 'default)))))
+
 (defun nano-mu4e-subject-symbol (msg)
   "Return a symbol to be displayed at the front of a thread subject. It
 relies on NERD font."
-  
-    (let* ((flags (plist-get msg :flags))
-           (is-list (memq 'list flags))
-           (list (mu4e-message-field msg :list))
-           (is-personal (memq 'personal flags))
-           (from (mu4e-contact-email (car (mu4e-message-field msg :from))))
-           (from-github (string= from "notifications@github.com")))
-      ;; Order is important
-      (cond (from-github
-             (nano-mu4e-make-button
-              (propertize (nano-mu4e-symbol 'github)   'face 'default)
-              "from:notifications@github.com"
-              "Search mails from GitHub"))
-            (is-list
-             (nano-mu4e-make-button
-              (propertize (nano-mu4e-symbol 'list)     'face 'default)
-              (format "list:%s" list)
-              (format "Search mail from/to %s" list)))
-             (is-personal
-              (nano-mu4e-make-button
-               (propertize (nano-mu4e-symbol 'personal) 'face 'default)
-               "flag:personal"
-               "Search all mails flagged as personal"))
-            (t
-             (propertize (nano-mu4e-symbol 'root)     'face 'default)))))
+  (propertize (nano-mu4e-symbol 'root) 'face 'default))
 
 (defun nano-mu4e-message-symbol (msg)
   "Return a symbol to be displayed at the front of a message.  It
