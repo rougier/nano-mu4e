@@ -351,25 +351,52 @@ When clicked, a new SEARCH is initiated."
 
 (defun nano-mu4e-make-tag (tag)
   "Make a clickable TAG button"
-  (nano-mu4e-make-button tag
+
+    (nano-mu4e-make-button tag
                          (format "tag:%s" tag)
-                         (format "Search for tag %s" tag)))
+                         (format "Search for tag %s" tag)
+                         '(link bold)))
   
-(defun nano-mu4e-msg-tags (msg)
-  "Get MSG tags as a propertized string"
+ (defun nano-mu4e-msg-tags (msg)
+    "Return a string of tags from MSG."
 
-  (let* ((tags (mu4e-message-field msg :tags))
-         (symbol (nano-mu4e-symbol 'tag)))
-    (if (> (length tags) 0)
-        (propertize (concat symbol
-                            (mapconcat #'nano-mu4e-make-tag tags (concat " " symbol)))
-                    'tags t)
-    "")))
+    (let* ((unread-count (nano-mu4e-thread-unread-count msg))
+           (tags (mu4e-message-field msg :tags)))
+      (if (> (length tags) 0)
+          (mapconcat
+           (lambda (tag)
+             (propertize (concat (nano-mu4e-symbol 'tag)
+                                 (nano-mu4e-make-tag tag) "") ;; "▕")
+                         'face (if (> unread-count 0)
+                                   'nano-mu4e-tag-face
+                                 'shadow)))
+           tags " ")
+        "")))
 
+;; Alternate tags decoration
+;; This require to suppress the space between tags and thread count
+;; (defun nano-mu4e-msg-tags (msg)
+;;     "Return a string of tags from MSG."
+;;     (let* ((unread-count (nano-mu4e-thread-unread-count msg))
+;;            (tags (mu4e-message-field msg :tags)))
+;;       (if (> (length tags) 0)
+;;           (mapconcat
+;;            (lambda (tag)
+;;              (propertize (concat " "
+;;                                  (nano-mu4e-make-tag tag) "▕")
+;;                          'face (if (> unread-count 0)
+;;                                    'nano-salient-i
+;;                                  'nano-subtle)))
+;;            tags "")
+;;         "")))
+ 
 (defun nano-mu4e-msg-subject (msg)
   "Get MSG subject as a propertized string"
 
-  (let* ((subject (mu4e-message-field msg :subject)))
+  (let* ((subject (mu4e-message-field msg :subject))
+         (subject (if (string-empty-p subject)
+                      "Empty subject"
+                    subject)))
     (propertize subject 'subject t)))
 
 (defun nano-mu4e-msg-docid (msg)
