@@ -784,7 +784,7 @@ relies on the NERD font."
   ;; Order is important
   (cond ((nano-mu4e-msg-is-new msg)
          (nano-mu4e-make-button
-          (propertize (nano-mu4e-symbol 'new) 'face 'nano-critical)
+          (propertize (nano-mu4e-symbol 'unread) 'face 'mu4e-unread-face)
           "flag:new AND NOT flag:trashed"
           "Search for new mails"))
         
@@ -818,19 +818,19 @@ relies on the NERD font."
           "flag:signed"
           "Search for encrypted mails"))
         
-        ;; ((nano-mu4e-msg-is-sent msg)
-        ;;   (propertize (nano-mu4e-symbol 'sent) 'face 'shadow))
-        ;; ((nano-mu4e-msg-is-archived msg)
-        ;;   (propertize (nano-mu4e-symbol 'archived) 'face 'shadow))
+         ((nano-mu4e-msg-is-sent msg)
+           (propertize (nano-mu4e-symbol 'sent) 'face 'shadow))
+         ((nano-mu4e-msg-is-archived msg)
+           (propertize (nano-mu4e-symbol 'archived) 'face 'shadow))
         (t
-         (propertize "  " 'face 'nano-default))))
+         (propertize " " 'face 'default))))
 
 (defun nano-mu4e-message-line (msg)
   "Return a propertized description of MSG.
 This is suitable for displaying in the header view."
 
   (let* ((width (window-width))
-         (face  (cond ((nano-mu4e-msg-is-unread msg)          'bold)
+         (face  (cond ((nano-mu4e-msg-is-unread msg)          'mu4e-unread-face)
                       ;; ((nano-mu4e-msg-is-thread-root msg)  'default)
                       ;; ((nano-mu4e-msg-is-archived msg)     'shadow)
                       ((nano-mu4e-msg-is-sent msg)            'shadow)
@@ -1122,7 +1122,7 @@ this is the case."
                 (overlay (make-overlay (prop-match-beginning match)
                                        (prop-match-end match))))
       (overlay-put overlay 'display (propertize (or mark (nano-mu4e-symbol 'mark))
-                                                'face 'nano-critical))
+                                                'face 'mu4e-system-face))
       (overlay-put overlay 'mu4e-mark t)
       (overlay-put overlay 'evaporate t))
     
@@ -1131,7 +1131,7 @@ this is the case."
                 (overlay (make-overlay (prop-match-beginning match)
                                        (prop-match-end match))))
       (overlay-put overlay 'display (propertize (format "%20s" target)
-                                                'face '(error bold)))
+                                                'face '(mu4e-system-face bold)))
       (overlay-put overlay 'mu4e-mark t)
       (overlay-put overlay 'evaporate t))))
 
