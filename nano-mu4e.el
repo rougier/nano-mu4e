@@ -256,6 +256,7 @@ When clicked, a new SEARCH is initiated."
          (from-name (or (mu4e-contact-name from)
                         (mu4e-contact-email from)
                         "<no name>"))
+         (from-name (nano-mu4e-sanitize-string from-name nil))
          (from-name (propertize from-name
                                 'unread (nano-mu4e-msg-is-unread msg)
                                 'root (nano-mu4e-msg-is-thread-root msg)
@@ -433,6 +434,18 @@ When clicked, a new SEARCH is initiated."
   
   (let* ((flags (plist-get msg :flags)))
     (memq 'draft flags)))
+
+(defun nano-mu4e-msg-is-trash (msg)
+  "Return whether MSG is in a trash folder."
+  
+  (let* ((maildir (plist-get msg :maildir)))
+    (string-match-p "trash" (downcase maildir))))
+
+(defun nano-mu4e-msg-is-junk (msg)
+  "Return whether MSG is in a trash folder."
+  
+  (let* ((maildir (plist-get msg :maildir)))
+    (string-match-p "junk" (downcase maildir))))
 
 (defun nano-mu4e-msg-is-unread (msg)
   "Return whether MSG is unread."
@@ -785,6 +798,12 @@ It depends on the nano-mu4e-style."
              "\n")))
   'face 'nano-mu4e-border-face))
 
+(defun nano-mu4e-sanitize-string (str)
+"Clean emojis from STR. Targets decorative symbols, flags, and modern emojis."
+  (let* ((emoji-regex "[\U0001f300-\U0001f9ff\U0001f1e0-\U0001f1ff\U00002000-\U00002bff\U0000fe00-\U0000fe0f]")
+         (no-emojis (replace-regexp-in-string emoji-regex "" str))
+         (cleaned (string-trim (replace-regexp-in-string "  +" " " no-emojis))))
+    cleaned))
 
 (defun nano-mu4e-subject-line (msg &optional index)
   "Return a one line describing a thread topic. MSG must be thread root."
@@ -795,6 +814,10 @@ It depends on the nano-mu4e-style."
                               'face (if (> unread-count 0)
                                         'mu4e-title-face
                                       'mu4e-title-face)))
+         (subject (nano-mu4e-sanitize-string subject))
+         (subject (cond ((nano-mu4e-msg-is-junk msg) (concat "[SPAM] " subject))
+                        ((nano-mu4e-msg-is-trash msg) (concat "[TRASH] " subject))
+                        (t subject)))
          (tags (nano-mu4e-msg-tags msg))
          (face `( :foreground ,(face-background 'default nil 'default)
                   :background ,(face-foreground 'default nil 'default)
@@ -1243,7 +1266,6 @@ this is the case."
         (puthash docid (cons mark target) mu4e--mark-map)
         (nano-mu4e-mark shown-target markkar)
         docid))))
-
 
 (defun nano-mu4e-mode-on ()
    (setq mu4e-headers-append-func #'nano-mu4e-append-handler
