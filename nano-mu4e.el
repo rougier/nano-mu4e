@@ -49,7 +49,11 @@
   "N Λ N O Mu4e"
   :group 'nano)
 
-(defcustom nano-mu4e-style 'compact
+(defgroup nano-mu4e-faces nil
+  "N Λ N O Mu4e faces"
+  :group 'nano-mu4e)
+
+(defcustom nano-mu4e-style 'boxed
   "One of simple regular, boxed, or compact
 
 Simple:
@@ -121,12 +125,25 @@ Boxed:
   :type 'func)
 
 (defface nano-mu4e-border-face
-  `((t :foreground ,(face-foreground 'default t 'default)))
-  "Face for thread borders")
+  `((t :inherit default))
+  "Face for thread borders"
+  :group 'nano-mu4e-faces)
 
 (defface nano-mu4e-preview-face
-  `((t :foreground ,(face-foreground 'shadow t 'default)))
-  "Face for message preview")
+  `((t :inherit shadow))
+  "Face for message preview"
+    :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-tag-face
+  `((t :inherit org-tag))
+  "Face for message tags"
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-count-face
+  `((t :inherit bold
+       :inverse-video t))
+  "Face for thread count"
+  :group 'nano-mu4e-faces)
 
 (defcustom nano-mu4e-symbols
   '((github     . ("[!]" . " "))
@@ -211,18 +228,17 @@ be done with a display property or spaces depending on USE-SPACE."
        suffix))))
 
 
-(defun nano-mu4e-make-button (text search help)
+(defun nano-mu4e-make-button (text search help &optional mouse-face)
   "Create a clickable button displaying TEXT and HELP.
 When clicked, a new SEARCH is initiated."
 
   (let* ((keymap (define-keymap
                    "<mouse-2>" #'push-button
-                   "<follow-link>" 'mouse-face
                    "<mode-line> <mouse-2>" #'push-button
                    "<header-line> <mouse-2>" #'push-button)))
     (propertize text
                 'pointer 'hand
-                'mouse-face `link
+                'mouse-face (or mouse-face 'bold)
                 'help-echo help
                 'button t
                 'follow-link t
