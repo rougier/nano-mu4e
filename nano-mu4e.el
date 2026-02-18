@@ -256,7 +256,7 @@ When clicked, a new SEARCH is initiated."
          (from-name (or (mu4e-contact-name from)
                         (mu4e-contact-email from)
                         "<no name>"))
-         (from-name (nano-mu4e-sanitize-string from-name nil))
+         (from-name (nano-mu4e-sanitize-string from-name))
          (from-name (propertize from-name
                                 'unread (nano-mu4e-msg-is-unread msg)
                                 'root (nano-mu4e-msg-is-thread-root msg)
