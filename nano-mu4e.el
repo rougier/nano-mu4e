@@ -1308,7 +1308,7 @@ this is the case."
   (advice-remove #'mu4e-headers-mark-and-next
                  #'nano-mu4e-headers-mark-and-next)
   (mu4e-search-rerun)
-  (setq nano-mu4e-mode -1))
+  (setq nano-mu4e-mode nil))
 
 
 ;;;###autoload
