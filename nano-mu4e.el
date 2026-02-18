@@ -1318,7 +1318,7 @@ this is the case."
   :keymap (list (cons (kbd "<up>")       #'nano-mu4e-prev-msg)
                 (cons (kbd "<down>")     #'nano-mu4e-next-msg)
                 (cons (kbd "S-<up>")     #'nano-mu4e-prev-thread)
-                (cons (kbd "S-<down>")   #'nano-mnnu4e-next-thread)
+                (cons (kbd "S-<down>")   #'nano-mu4e-next-thread)
                 (cons (kbd "<SPC>")      #'nano-mu4e-mark-as-new)
                 (cons (kbd "<mouse-1>")  #'nano-mu4e-check-cursor)
                 (cons (kbd "p")          #'nano-mu4e-prev-unread-msg)
