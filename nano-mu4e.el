@@ -800,11 +800,12 @@ It depends on the nano-mu4e-style."
   'face 'nano-mu4e-border-face))
 
 (defun nano-mu4e-sanitize-string (str)
-"Clean emojis from STR. Targets decorative symbols, flags, and modern emojis."
-  (let* ((emoji-regex "[\U0001f300-\U0001f9ff\U0001f1e0-\U0001f1ff\U00002000-\U00002bff\U0000fe00-\U0000fe0f]")
-         (no-emojis (replace-regexp-in-string emoji-regex "" str))
-         (cleaned (string-trim (replace-regexp-in-string "  +" " " no-emojis))))
-    cleaned))
+  "Clean emojis from STR. Targets decorative symbols, flags, and modern emojis."
+  (when (stringp str)
+    (let* ((emoji-regex "[\U0001f300-\U0001f9ff\U0001f1e0-\U0001f1ff\U00002000-\U00002bff\U0000fe00-\U0000fe0f]")
+           (no-emojis (replace-regexp-in-string emoji-regex "" str))
+           (cleaned (string-trim (replace-regexp-in-string "  +" " " no-emojis))))
+      cleaned)))
 
 (defun nano-mu4e-subject-line (msg &optional index)
   "Return a one line describing a thread topic. MSG must be thread root."
