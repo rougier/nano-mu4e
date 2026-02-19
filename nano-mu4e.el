@@ -822,12 +822,13 @@ It depends on the nano-mu4e-style."
          (face `( :foreground ,(face-background 'default nil 'default)
                   :background ,(face-foreground 'default nil 'default)
                   :inherit bold))
+         (face 'nano-mu4e-count-face)
          (count (if count
                   (if (> unread-count 0)
                       (propertize (format " %d " count)
                                   'face face)
                     (propertize (format " %d " count)
-                                'face '(widget-field bold)))
+                                'face '(widget-field shadow bold)))
                   "")))
     (propertize
      (concat
