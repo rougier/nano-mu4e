@@ -357,8 +357,8 @@ When clicked, a new SEARCH is initiated."
                          (format "tag:%s" tag)
                          (format "Search for tag %s" tag)
                          '(link bold)))
-  
- (defun nano-mu4e-msg-tags (msg)
+
+(defun nano-mu4e-msg-tags (msg)
     "Return a string of tags from MSG."
 
     (let* ((unread-count (nano-mu4e-thread-unread-count msg))
@@ -370,13 +370,13 @@ When clicked, a new SEARCH is initiated."
                                  (nano-mu4e-make-tag tag) "") ;; "▕")
                          'face (if (> unread-count 0)
                                    'nano-mu4e-tag-face
-                                 'shadow)))
+                                 '(shadow bold))))
            tags " ")
         "")))
 
 ;; Alternate tags decoration
 ;; This require to suppress the space between tags and thread count
-;; (defun nano-mu4e-msg-tags (msg)
+;; defun nano-mu4e-msg-tags (msg)
 ;;     "Return a string of tags from MSG."
 ;;     (let* ((unread-count (nano-mu4e-thread-unread-count msg))
 ;;            (tags (mu4e-message-field msg :tags)))
@@ -386,8 +386,9 @@ When clicked, a new SEARCH is initiated."
 ;;              (propertize (concat " "
 ;;                                  (nano-mu4e-make-tag tag) "▕")
 ;;                          'face (if (> unread-count 0)
-;;                                    'nano-salient-i
-;;                                  'nano-subtle)))
+;;                                    '( :inherit (shadow bold) :inverse-video t)
+;;                                  '( :inherit (shadow) :inverse-video nil))))
+;; ;;                                 'nano-subtle)))
 ;;            tags "")
 ;;         "")))
  
