@@ -256,7 +256,7 @@ When clicked, a new SEARCH is initiated."
          (from-name (or (mu4e-contact-name from)
                         (mu4e-contact-email from)
                         "<no name>"))
-         (from-name (nano-mu4e-sanitize-string from-name nil))
+         (from-name (nano-mu4e-sanitize-string from-name))
          (from-name (propertize from-name
                                 'unread (nano-mu4e-msg-is-unread msg)
                                 'root (nano-mu4e-msg-is-thread-root msg)
@@ -1308,7 +1308,7 @@ this is the case."
   (advice-remove #'mu4e-headers-mark-and-next
                  #'nano-mu4e-headers-mark-and-next)
   (mu4e-search-rerun)
-  (setq nano-mu4e-mode -1))
+  (setq nano-mu4e-mode nil))
 
 
 ;;;###autoload
@@ -1318,7 +1318,7 @@ this is the case."
   :keymap (list (cons (kbd "<up>")       #'nano-mu4e-prev-msg)
                 (cons (kbd "<down>")     #'nano-mu4e-next-msg)
                 (cons (kbd "S-<up>")     #'nano-mu4e-prev-thread)
-                (cons (kbd "S-<down>")   #'nano-mnnu4e-next-thread)
+                (cons (kbd "S-<down>")   #'nano-mu4e-next-thread)
                 (cons (kbd "<SPC>")      #'nano-mu4e-mark-as-new)
                 (cons (kbd "<mouse-1>")  #'nano-mu4e-check-cursor)
                 (cons (kbd "p")          #'nano-mu4e-prev-unread-msg)
