@@ -54,6 +54,123 @@
   :group 'nano-mu4e)
 
 (defcustom nano-mu4e-style 'boxed
+
+;;; Faces
+;;; ------------------------------------------------------------------------
+
+(defface nano-mu4e-border
+  `((t :inherit default))
+  "Face for thread borders."
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-preview
+  `((t :inherit (italic)))
+  "Face for message preview"
+    :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-todo
+  `((t :inherit (error bold)
+       :inverse-video nil))
+  "Face for TODO tag."
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-tag-active
+  `((t :inherit (link bold)
+       :inverse-video nil))
+  "Face for tags when active."
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-tag-inactive
+  `((t :inherit (default)
+       :inverse-video nil))
+  "Face for tags when inactive."
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-title-active
+  `((t :inherit (bold)))
+  "Face for thread title when active."
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-title-inactive
+  `((t :inherit (shadow bold)))
+  "Face for thread title when active."
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-match
+  `((t :inherit (bold)))
+  "Face for matched emails"
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-new
+  `((t :inherit (link bold)))
+  "Face for new messages"
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-unread
+  `((t :inherit (link)))
+  "Face for unread messages"
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-related
+  `((t :inherit (shadow)))
+  "Face for related messages"
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-draft
+  `((t :inherit (shadow)))
+  "Face for drafts"
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-flagged
+  `((t :inherit (link)))
+  "Face for flagges messages"
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-archived
+  `((t :inherit (shadow)))
+  "Face for flagges messages"
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-sent
+  `((t :inherit (shadow italic)))
+  "Face for sent mesages"
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-system
+  `((t :inherit (error bold)))
+  "Face for system information."
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-gutter-head-active
+  `((t :inherit (bold)
+       :inverse-video t))
+  "Face for gutter head when there is at least one unred mail in thread."
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-gutter-head-inactive
+  `((t :inherit (shadow)
+       :inverse-video t))
+  "Face for gutter head"
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-gutter-match
+  `((t :inherit (shadow widget-field)))
+  "Face for gutter head"
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-gutter-body
+  `((t :inherit (shadow widget-field)))
+  "Face for gutter"
+  :group 'nano-mu4e-faces)
+
+(defface nano-mu4e-gutter-mark
+  `((t :inherit (error bold)
+       :inverse-video t))
+  "Face for gutter mark"
+  :group 'nano-mu4e-faces)
+
+
+;;; Customization variables
   "One of simple regular, boxed, or compact
 
 Simple:
