@@ -246,27 +246,6 @@ Boxed:
   :group 'nano-mu4e
   :type 'func)
 
-(defface nano-mu4e-border-face
-  `((t :inherit default))
-  "Face for thread borders"
-  :group 'nano-mu4e-faces)
-
-(defface nano-mu4e-preview-face
-  `((t :inherit shadow))
-  "Face for message preview"
-    :group 'nano-mu4e-faces)
-
-(defface nano-mu4e-tag-face
-  `((t :inherit org-tag))
-  "Face for message tags"
-  :group 'nano-mu4e-faces)
-
-(defface nano-mu4e-count-face
-  `((t :inherit bold
-       :inverse-video t))
-  "Face for thread count"
-  :group 'nano-mu4e-faces)
-
 (defcustom nano-mu4e-symbols
   '((github     . ("[!]" . " "))
     (list       . ("[=]" . " "))
