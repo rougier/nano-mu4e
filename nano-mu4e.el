@@ -241,17 +241,24 @@ Boxed:
                  (const :tag "Compact" compact)
                  (const :tag "Boxed" boxed)))
 
+(defcustom nano-mu4e-msg-preview nil
+  "Whether to preview message."
+  :group 'nano-mu4e
+  :type 'boolean)
+
 (defcustom nano-mu4e-msg-preview-func nil ;; #'nano-mu4e-msg-preview-p
   "Function pointer to decide whether to preview content of a message"
   :group 'nano-mu4e
   :type 'func)
 
 (defcustom nano-mu4e-symbols
-  '((github     . ("[!]" . " "))
-    (list       . ("[=]" . " "))
+  '((github     . ("[!]" . " "))
+    (list       . ("[=]" . " "))
     (personal   . ("[P]" . " "))
     (root       . ("[+]" . " "))    
     (unread     . ("[U]" . " "))
+    (match      . ("[*]" . " "))
+    (trash      . ("[T]" . " "))
     (flagged    . ("[F]" . " "))
     (new        . ("[N]" . "󰝧 "))
     (draft      . ("[D]" . " "))
@@ -268,21 +275,10 @@ The fancy version of symbols relies on NERD font v3.0 (oct collection)."
   :group 'nano-mu4e
   :type '(alist :key-type (symbol :tag "Symbol")
                 :value-type (cons (string :tag "ASCII")
-                                  (string :tag "UNICODE"))))
+                                  (string :tag "NERD"))))
 
-;; Set mu4e-marks with NERD font v3.0 (oct collection)
-(setf (plist-get (alist-get 'refile mu4e-marks) :char)  '("(R)" . " ")
-      (plist-get (alist-get 'move mu4e-marks) :char)    '("(M)" . " ")
-      (plist-get (alist-get 'tag mu4e-marks) :char)     '("(T)" . " ")
-      (plist-get (alist-get 'action mu4e-marks) :char)  '("(A)" . " ")
-      (plist-get (alist-get 'delete mu4e-marks) :char)  '("(D)" . " ")
-      (plist-get (alist-get 'flag mu4e-marks) :char)    '("(F)" . " ")
-      (plist-get (alist-get 'unflag mu4e-marks) :char)  '("(F)" . " ")
-      (plist-get (alist-get 'read mu4e-marks) :char)    '("(!)" . " ")
-      (plist-get (alist-get 'unread mu4e-marks) :char)  '("(!)" . " ")
-      (plist-get (alist-get 'trash mu4e-marks) :char)   '("(x)" . " ")
-      (plist-get (alist-get 'untrash mu4e-marks) :char) '("(x)" . " "))
-
+;;; String utilities
+;;; ------------------------------------------------------------------------
 
 (defun nano-mu4e-justify (left &optional right left-edge right-edge use-space)
   "Return a justified string with LEFT on left, RIGHT on right, prepending
@@ -294,17 +290,17 @@ be done with a display property or spaces depending on USE-SPACE."
                       (memq nano-mu4e-style '(boxed compact))))
          (left-edge (or left-edge (if has-border "│ " "")))
          (right-edge (or right-edge (if has-border " │" "")))
-         (left (concat (propertize left-edge 'face 'nano-mu4e-border-face)
+         (left (concat (propertize left-edge 'face 'nano-mu4e-border)
                        (if (stringp left)
                            left
                          (mapconcat #'identity left ""))))
          (right (concat (if (stringp right)
                             right
                           (mapconcat #'identity right ""))
-                        (propertize right-edge 'face 'nano-mu4e-border-face)))
+                        (propertize right-edge 'face 'nano-mu4e-border)))
          (left (truncate-string-to-width left (- width (length right) 2) nil nil "…"))
          (padding (if use-space
-                      (make-string (- (window-width) (length left) (length right) 1) ? )
+                      (make-string (max 0 (- (window-width) (length left) (length right) 1) ? ))
                     (propertize " " 'display
                                 `(space :align-to (- right ,(length right) 1))))))
     (concat left padding right)))
@@ -328,7 +324,6 @@ be done with a display property or spaces depending on USE-SPACE."
        (propertize " " 'display `(space :align-to (- right 2)))
        suffix))))
 
-
 (defun nano-mu4e-make-button (text search help &optional mouse-face)
   "Create a clickable button displaying TEXT and HELP.
 When clicked, a new SEARCH is initiated."
@@ -348,6 +343,18 @@ When clicked, a new SEARCH is initiated."
                 'keymap keymap
                 'action #'mu4e-search)))
 
+(defun nano-mu4e-sanitize-string (str)
+  "Clean emojis from STR. Targets decorative symbols, flags, and modern emojis."
+  (when (stringp str)
+    (let* ((emoji-regex "[\U0001f300-\U0001f9ff\U0001f1e0-\U0001f1ff\U00002000-\U00002bff\U0000fe00-\U0000fe0f]")
+           (no-emojis (replace-regexp-in-string emoji-regex "" str))
+           (cleaned (string-trim (replace-regexp-in-string "  +" " " no-emojis))))
+      cleaned)))
+
+
+;;; Message field accessors
+;;; ------------------------------------------------------------------------
+
 (defun nano-mu4e-msg-from (msg)
   "Get MSG sender as a propertized string."
 
@@ -365,45 +372,6 @@ When clicked, a new SEARCH is initiated."
     (nano-mu4e-make-button from-name
                            (format "from:%s" from-email)
                            (format "Search mails from %s" from-name))))
-
-(defun nano-mu4e-date-is-yesterday (date)
-  "Return t if DATE is yesterday."
-  
-  (let* ((today (current-time))
-         (yesterday (time-subtract today (days-to-time 1)))
-         (date-day (format-time-string "%Y-%m-%d" date))
-         (yesterday-day (format-time-string "%Y-%m-%d" yesterday)))
-    (string= date-day yesterday-day)))
-
-(defun nano-mu4e-date-is-today (date)
-  "Return t if DATE is today."
-  
-  (let ((date-str (format-time-string "%Y-%m-%d" date))
-        (today-str (format-time-string "%Y-%m-%d" (current-time))))
-    (string= date-str today-str)))
-
-(defun nano-mu4e-date-is-recent (date)
-  "Return t if DATE is less than 5 minutes ago."
-
-  (let ((delta (float-time (time-subtract (current-time) date))))
-    (< delta (* 5 60))))
-
-(defun nano-mu4e-date-is-this-week (date)
-  "Return t if DATE is in the same ISO week as today."
-  
-  (let ((week (format-time-string "%V" date))  ;; ISO week number
-        (year (format-time-string "%G" date))  ;; ISO week-based year
-        (current-week (format-time-string "%V" (current-time)))
-        (current-year (format-time-string "%G" (current-time))))
-    (and (string= week current-week)
-         (string= year current-year))))
-
-(defun nano-mu4e-date-is-this-month (date)
-  "Return t if DATE is in the current month."
-  
-  (let ((date-month (format-time-string "%Y-%m" date))
-        (current-month (format-time-string "%Y-%m" (current-time))))
-    (string= date-month current-month)))
 
 (defun nano-mu4e-msg-date (msg)
   "Get MSG date as a string."
@@ -451,6 +419,7 @@ When clicked, a new SEARCH is initiated."
                       (format-time-string "Search mails from %Y" date)))))
              'date t))))
 
+
 (defun nano-mu4e-make-tag (tag)
   "Make a clickable TAG button"
 
@@ -459,40 +428,48 @@ When clicked, a new SEARCH is initiated."
                          (format "Search for tag %s" tag)
                          '(link bold)))
 
-(defun nano-mu4e-msg-tags (msg)
+(defun nano-mu4e-msg-tags-root (msg)
     "Return a string of tags from MSG."
-
     (let* ((unread-count (nano-mu4e-thread-unread-count msg))
-           (tags (mu4e-message-field msg :tags)))
-      (if (> (length tags) 0)
+           (tags-list (mu4e-message-field msg :tags))
+           (tags-list (if (member "TODO" tags-list)
+                          (append (remove "TODO" tags-list) '("TODO"))
+                        tags-list))
+           (face (if (> unread-count 0)
+                     'nano-mu4e-tag-active
+                   'nano-mu4e-tag-inactive)))
+      (if (> (length tags-list) 0)
           (mapconcat
            (lambda (tag)
              (propertize (concat (nano-mu4e-symbol 'tag)
-                                 (nano-mu4e-make-tag tag) "") ;; "▕")
-                         'face (if (> unread-count 0)
-                                   'nano-mu4e-tag-face
-                                 '(shadow bold))))
-           tags " ")
-        "")))
+                                  ""
+                                 (nano-mu4e-make-tag tag) "")
+                         'face (if (string= tag "TODO")
+                                   'nano-mu4e-todo
+                                 face)))                                 
+           tags-list (propertize " " 'face face))
+         "")))
 
-;; Alternate tags decoration
-;; This require to suppress the space between tags and thread count
-;; defun nano-mu4e-msg-tags (msg)
-;;     "Return a string of tags from MSG."
-;;     (let* ((unread-count (nano-mu4e-thread-unread-count msg))
-;;            (tags (mu4e-message-field msg :tags)))
-;;       (if (> (length tags) 0)
-;;           (mapconcat
-;;            (lambda (tag)
-;;              (propertize (concat " "
-;;                                  (nano-mu4e-make-tag tag) "▕")
-;;                          'face (if (> unread-count 0)
-;;                                    '( :inherit (shadow bold) :inverse-video t)
-;;                                  '( :inherit (shadow) :inverse-video nil))))
-;; ;;                                 'nano-subtle)))
-;;            tags "")
-;;         "")))
- 
+(defun nano-mu4e-msg-tags (msg)
+    "Return a string of tags from MSG."
+    (let* ((unread-count (nano-mu4e-thread-unread-count msg))
+           (tags-list (mu4e-message-field msg :tags))
+           (tags-list (if (member "TODO" tags-list)
+                          (append (remove "TODO" tags-list) '("TODO"))
+                        tags-list))
+           (face (if (> unread-count 0)
+                     'nano-mu4e-tag-active
+                   'nano-mu4e-tag-inactive)))
+      (if (> (length tags-list) 0)
+          (mapconcat
+           (lambda (tag)
+             (propertize (nano-mu4e-make-tag tag)
+                         'face (if (string= tag "TODO")
+                                   'nano-mu4e-todo
+                                 face)))                                 
+           tags-list (propertize "," 'face face))
+         "")))
+
 (defun nano-mu4e-msg-subject (msg)
   "Get MSG subject as a propertized string"
 
@@ -506,6 +483,10 @@ When clicked, a new SEARCH is initiated."
   "Get MSG docid as a string"
   
   (plist-get msg :docid))
+
+
+;;; Message predicates
+;;; ------------------------------------------------------------------------
 
 (defun nano-mu4e-msg-has-attach (msg)
   "Return whether MSG has attachment"
@@ -603,17 +584,75 @@ When clicked, a new SEARCH is initiated."
   (let* ((meta (plist-get msg :meta)))
     (plist-get meta :is-last)))
 
+(defun nano-mu4e-msg-from-github (msg)
+  "Return whether MSG is a GitHub notification."
+  (let ((from (mu4e-contact-email (car (mu4e-message-field msg :from)))))
+    (string= from "notifications@github.com")))
+
+(defun nano-mu4e-msg-has-todo (msg)
+  "Return whether MSG has attachment"
+  
+  (let* ((tags (mu4e-message-field msg :tags)))
+    (member "TODO" tags)))
+
+;;; Date predicates
+;;; ------------------------------------------------------------------------
+
+(defun nano-mu4e-date-is-yesterday (date)
+  "Return t if DATE is yesterday."
+  
+  (let* ((today (current-time))
+         (yesterday (time-subtract today (days-to-time 1)))
+         (date-day (format-time-string "%Y-%m-%d" date))
+         (yesterday-day (format-time-string "%Y-%m-%d" yesterday)))
+    (string= date-day yesterday-day)))
+
+(defun nano-mu4e-date-is-today (date)
+  "Return t if DATE is today."
+  
+  (let ((date-str (format-time-string "%Y-%m-%d" date))
+        (today-str (format-time-string "%Y-%m-%d" (current-time))))
+    (string= date-str today-str)))
+
+(defun nano-mu4e-date-is-recent (date)
+  "Return t if DATE is less than 5 minutes ago."
+
+  (let ((delta (float-time (time-subtract (current-time) date))))
+    (< delta (* 5 60))))
+
+(defun nano-mu4e-date-is-this-week (date)
+  "Return t if DATE is in the same ISO week as today."
+  
+  (let ((week (format-time-string "%V" date))  ;; ISO week number
+        (year (format-time-string "%G" date))  ;; ISO week-based year
+        (current-week (format-time-string "%V" (current-time)))
+        (current-year (format-time-string "%G" (current-time))))
+    (and (string= week current-week)
+         (string= year current-year))))
+
+(defun nano-mu4e-date-is-this-month (date)
+  "Return t if DATE is in the current month."
+  
+  (let ((date-month (format-time-string "%Y-%m" date))
+        (current-month (format-time-string "%Y-%m" (current-time))))
+    (string= date-month current-month)))
+
+
+;;; Thread predicates and instrumentation
+;;; ------------------------------------------------------------------------
+
 (defun nano-mu4e-thread-fold-info (count unread)
   "Return a string divider with COUNT hidden messages, spanning the window width."
   (let* ((window-width (window-width))
          (message (format " %d hidden messages " count))
          (msg-length (length message))
          (left-edge (if (memq nano-mu4e-style '(boxed compact))
-                        "├"
-                      "   ╴"))
+                        (propertize "├" 'face 'nano-mu4e-border)
+                      (concat (propertize " -- " 'face 'nano-mu4e-gutter-body)
+                              " ")))
          (right-edge (if (memq nano-mu4e-style '(boxed compact))
-                        "┤"
-                       "╴"))
+                        (propertize "┤" 'face 'nano-mu4e-border)
+                       (propertize "╴" 'face 'shadow)))
          (line-char "╴")
          (remaining (- window-width
                        1
@@ -623,18 +662,9 @@ When clicked, a new SEARCH is initiated."
          (half (/ remaining 2))
          (line-left (make-string half (string-to-char line-char)))
          (line-right (make-string (- remaining half) (string-to-char line-char))))
-    (concat (propertize left-edge 'face
-                        (if (memq nano-mu4e-style '(boxed compact))
-                            'default
-                          'shadow))
-            (propertize (concat line-left
-                                message
-                                line-right)
-                        'face 'shadow)
-            (propertize right-edge 'face
-                        (if (memq nano-mu4e-style '(boxed compact))
-                            'default
-                          'shadow))
+    (concat left-edge
+            (propertize (concat line-left message line-right) 'face 'shadow)
+            right-edge
              "\n")))
   
 (defun nano-mu4e-msg-is-thread-root (msg)
@@ -669,7 +699,7 @@ When clicked, a new SEARCH is initiated."
   "Return thread first unread docid. MSG must be thread root."
 
   (unless (nano-mu4e-msg-is-thread-root msg)
-    (error (message "MSG must be thread root")))
+    (error "MSG must be thread root"))
   (let* ((meta (plist-get msg :meta)))
     (plist-get meta :thread-unread-first)))
 
@@ -677,9 +707,9 @@ When clicked, a new SEARCH is initiated."
   "Return thread last unread docid. MSG must be thread root."
 
   (unless (nano-mu4e-msg-is-thread-root msg)
-    (error (message "MSG must be thread root")))
+    (error "MSG must be thread root"))
   (let* ((meta (plist-get msg :meta)))
-    (plist-get meta :thread-unread-first)))
+    (plist-get meta :thread-unread-last)))
 
 (defun nano-mu4e-thread-prefix (msg)
   "Return thread message prefix."
@@ -782,6 +812,10 @@ For each thread root message, mark them with:
     ;; Mark first message
     (plist-put (plist-get (car msglst) :meta) :is-first t)))
 
+
+;;; 10. Message preview
+;;; ------------------------------------------------------------------------
+
 (defun nano-mu4e-msg-preview-p (msg)
   "Return t if message is new, and not from a list or GitHub."
 
@@ -798,10 +832,8 @@ For each thread root message, mark them with:
   (let* ((msg (or msg (mu4e-message-at-point)))
          (size (or size 256))
          (filename (mu4e-message-readable-path msg)))
-
     ;; (with-current-buffer (get-buffer-create (format "file-%s" filename))
-    ;;  (insert-file-contents-literally filename))
-      
+    ;;  (insert-file-contents-literally filename))      
     (with-temp-buffer
       (insert-file-contents-literally filename)
       (let* ((handles (mm-dissect-buffer t))
@@ -861,31 +893,33 @@ For each thread root message, mark them with:
            (answer (replace-regexp-in-string "  " " " answer)))
       answer)))
 
+
+;;; Rendering
+;;; ------------------------------------------------------------------------
+
 (defun nano-mu4e-thread-top (msg)
   "Delimits a thread MSG at the top.
 It depends on the nano-mu4e-style."
 
   (propertize
-   (let ((first (nano-mu4e-msg-is-first msg)))
+   (let ((first (nano-mu4e-msg-is-first msg))
+         (last (nano-mu4e-msg-is-last msg)))
      (cond ((eq nano-mu4e-style 'boxed)
             (concat "┌" (make-string (- (window-width) 3) ?─) "┐" "\n"))
-           
            ((eq nano-mu4e-style 'compact)
             (if first 
                 (concat "┌" (make-string (- (window-width) 3) ?─) "┐" "\n")
               ""))
-           
-           ((and first (eq nano-mu4e-style 'regular))
-            (concat "───" (make-string (- (window-width) 4) ?─) "\n"))
-           (t "")))
-   'face 'nano-mu4e-border-face))
+           (t (if first "\n" ""))))
+   'face 'nano-mu4e-border))
 
 (defun nano-mu4e-thread-bottom (msg)
   "Delimits a thread MSG at the bottom.
 It depends on the nano-mu4e-style."
   
   (propertize
-   (let ((last (nano-mu4e-msg-is-last msg)))
+   (let ((first (nano-mu4e-msg-is-first msg))
+         (last (nano-mu4e-msg-is-last msg)))
      (cond ((eq nano-mu4e-style 'compact)
             (if last
                 (concat "└" (make-string (- (window-width) 3) ?─) "┘" "\n")
@@ -898,82 +932,12 @@ It depends on the nano-mu4e-style."
              (concat "" (make-string (- (window-width) 1) ?─) "\n"))
             (t
              "\n")))
-  'face 'nano-mu4e-border-face))
-
-(defun nano-mu4e-sanitize-string (str)
-  "Clean emojis from STR. Targets decorative symbols, flags, and modern emojis."
-  (when (stringp str)
-    (let* ((emoji-regex "[\U0001f300-\U0001f9ff\U0001f1e0-\U0001f1ff\U00002000-\U00002bff\U0000fe00-\U0000fe0f]")
-           (no-emojis (replace-regexp-in-string emoji-regex "" str))
-           (cleaned (string-trim (replace-regexp-in-string "  +" " " no-emojis))))
-      cleaned)))
-
-(defun nano-mu4e-subject-line (msg &optional index)
-  "Return a one line describing a thread topic. MSG must be thread root."
-  
-  (let* ((count (nano-mu4e-thread-count msg))
-         (unread-count (nano-mu4e-thread-unread-count msg))
-         (subject (propertize (nano-mu4e-msg-subject msg)
-                              'face (if (> unread-count 0)
-                                        'mu4e-title-face
-                                      'mu4e-title-face)))
-         (subject (nano-mu4e-sanitize-string subject))
-         (subject (cond ((nano-mu4e-msg-is-junk msg) (concat "[SPAM] " subject))
-                        ((nano-mu4e-msg-is-trash msg) (concat "[TRASH] " subject))
-                        (t subject)))
-         (tags (nano-mu4e-msg-tags msg))
-         (face `( :foreground ,(face-background 'default nil 'default)
-                  :background ,(face-foreground 'default nil 'default)
-                  :inherit bold))
-         (face 'nano-mu4e-count-face)
-         (count (if count
-                  (if (> unread-count 0)
-                      (propertize (format " %d " count)
-                                  'face face)
-                    (propertize (format " %d " count)
-                                'face '(widget-field shadow bold)))
-                  "")))
-    (propertize
-     (concat
-      (nano-mu4e-justify (list
-                          ;; (nano-mu4e-subject-symbol msg) " "
-                          subject)
-                         (list tags " " count))
-       "\n"))))
+  'face 'nano-mu4e-border))
 
 (defun nano-mu4e-symbol (symbol)
   "Return the given SYMBOL"
 
   (cdr (alist-get symbol nano-mu4e-symbols)))
-
-;; (defun nano-mu4e-subject-symbol (msg)
-;;   "Return a symbol to be displayed at the front of a thread subject. It
-;; relies on NERD font."
-  
-;;     (let* ((flags (plist-get msg :flags))
-;;            (is-list (memq 'list flags))
-;;            (list (mu4e-message-field msg :list))
-;;            (is-personal (memq 'personal flags))
-;;            (from (mu4e-contact-email (car (mu4e-message-field msg :from))))
-;;            (from-github (string= from "notifications@github.com")))
-;;       ;; Order is important
-;;       (cond (from-github
-;;              (nano-mu4e-make-button
-;;               (propertize (nano-mu4e-symbol 'github) 'face 'default)
-;;               "from:notifications@github.com"
-;;               "Search mails from GitHub"))
-;;             (is-list
-;;              (nano-mu4e-make-button
-;;               (propertize (nano-mu4e-symbol 'list) 'face 'default)
-;;               (format "list:%s" list)
-;;               (format "Search mail from/to %s" list)))
-;;              (is-personal
-;;               (nano-mu4e-make-button
-;;                (propertize (nano-mu4e-symbol 'personal) 'face 'default)
-;;                "flag:personal"
-;;                "Search all mails flagged as personal"))
-;;             (t
-;;              (propertize (nano-mu4e-symbol 'root) 'face 'default)))))
 
 (defun nano-mu4e-subject-symbol (msg)
   "Return a symbol to be displayed at the front of a thread subject. It
@@ -987,98 +951,180 @@ relies on the NERD font."
   ;; Order is important
   (cond ((nano-mu4e-msg-is-new msg)
          (nano-mu4e-make-button
-          (propertize (nano-mu4e-symbol 'unread) 'face 'mu4e-unread-face)
+          (propertize (nano-mu4e-symbol 'unread) 'face 'nano-mu4e-new)
           "flag:new AND NOT flag:trashed"
           "Search for new mails"))
         
         ((nano-mu4e-msg-is-unread msg)
          (nano-mu4e-make-button
-          (propertize (nano-mu4e-symbol 'unread) 'face 'default)
+          (propertize (nano-mu4e-symbol 'unread) 'face 'nano-mu4e-unread)
           "flag:unread AND NOT flag:trashed"
           "Search for unread mails"))
         
         ((nano-mu4e-msg-is-flagged msg)
          (nano-mu4e-make-button
-          (propertize (nano-mu4e-symbol 'flagged) 'face 'mu4e-flagged-face)
+          (propertize (nano-mu4e-symbol 'flagged) 'face 'nano-mu4e-flagged)
           "flag:flagged"
           "Search for flagged mails"))
         
         ((nano-mu4e-msg-is-draft msg)
          (nano-mu4e-make-button
-         (propertize (nano-mu4e-symbol 'draft) 'face 'mu4e-draft-face)
+         (propertize (nano-mu4e-symbol 'draft) 'face 'nano-mu4e-draft)
          "flag:draft"
          "Search for draft mails"))
         
-        ((nano-mu4e-msg-is-encrypted msg)
-         (nano-mu4e-make-button
-          (propertize (nano-mu4e-symbol 'encrypted) 'face 'shadow)
-          "flag:encrypted"
-          "Search for encrypted mails"))
-        
-        ((nano-mu4e-msg-is-signed msg)
-         (nano-mu4e-make-button
-          (propertize (nano-mu4e-symbol 'signed) 'face 'shadow)
-          "flag:signed"
-          "Search for encrypted mails"))
-        
          ((nano-mu4e-msg-is-sent msg)
-           (propertize (nano-mu4e-symbol 'sent) 'face 'shadow))
+           (propertize (nano-mu4e-symbol 'sent) 'face 'nano-mu4e-sent))
+
+         ((and (nano-mu4e-msg-is-archived msg)
+               (not (nano-mu4e-msg-is-related msg)))
+           (propertize (nano-mu4e-symbol 'archived) 'face 'default))
+
          ((nano-mu4e-msg-is-archived msg)
-           (propertize (nano-mu4e-symbol 'archived) 'face 'shadow))
+           (propertize (nano-mu4e-symbol 'archived) 'face 'nano-mu4e-archived))
         (t
          (propertize " " 'face 'default))))
+
+
+(defun nano-mu4e-subject-line (msg &optional _index)
+  "Return a one line describing a thread topic. MSG must be thread root."
+  
+  (let* ((count (nano-mu4e-thread-count msg))
+         (unread-count (nano-mu4e-thread-unread-count msg))
+         (has-unread (> unread-count 0))
+         (has-todo (nano-mu4e-msg-has-todo msg))
+         ;; (is-related (nano-mu4e-msg-is-related msg))
+         (from-github (nano-mu4e-msg-from-github msg))
+         (is-list (nano-mu4e-msg-is-list msg))
+         (is-personal (nano-mu4e-msg-is-personal msg))
+         (face  (cond (has-unread 'nano-mu4e-title-active)
+                      ;; (is-related 'nano-mu4e-related)
+                      (t          'nano-mu4e-title-inactive)))
+         (subject (propertize (nano-mu4e-msg-subject msg)
+                              'face face))
+         (subject (nano-mu4e-sanitize-string subject))
+         (subject (cond ((nano-mu4e-msg-is-junk msg) (concat "[SPAM] " subject))
+                        ((nano-mu4e-msg-is-trash msg) (concat "[TRASH] " subject))
+                        (t subject)))
+         (prefix (cond (from-github
+                        (propertize (format "%s " (nano-mu4e-symbol 'github))
+                                    'face face))
+                       (is-personal
+                        (propertize (format "%s " (nano-mu4e-symbol 'personal))
+                                    'face face))
+                       (is-list
+                        (propertize (format "%s " (nano-mu4e-symbol 'list))
+                                    'face face))
+                       (t "")))
+         (tags (nano-mu4e-msg-tags msg))
+         (face (cond (has-todo           'nano-mu4e-gutter-mark)
+                     ((> unread-count 0) 'nano-mu4e-gutter-head-active)
+                     (t                  'nano-mu4e-gutter-head-inactive)))
+         (count (if (> count 99)
+                    (propertize " ++ " 
+                                'face face
+                                'help-echo (format "%d mails in thread" count))
+                  (propertize (format " %02d " count)
+                              'face face))))
+    (propertize
+     (concat
+      (nano-mu4e-justify (list count " " prefix subject)
+                         (list tags))
+       "\n"))))
 
 (defun nano-mu4e-message-line (msg)
   "Return a propertized description of MSG.
 This is suitable for displaying in the header view."
 
   (let* ((width (window-width))
-         (face  (cond ((nano-mu4e-msg-is-unread msg)          'mu4e-unread-face)
-                      ;; ((nano-mu4e-msg-is-thread-root msg)  'default)
-                      ;; ((nano-mu4e-msg-is-archived msg)     'shadow)
-                      ((nano-mu4e-msg-is-sent msg)            'shadow)
-                      ((nano-mu4e-msg-is-related  msg)        'shadow)
+         (tags-list (mu4e-message-field msg :tags))
+         (tags (mapconcat #'identity tags-list ","))
+         (is-root (nano-mu4e-msg-is-thread-root msg))
+         (face  (cond ((nano-mu4e-msg-is-new msg)            'nano-mu4e-new)
+                      ((nano-mu4e-msg-is-unread msg)         'nano-mu4e-unread)
+                      ((not (nano-mu4e-msg-is-related msg))  'default)
+                      ((nano-mu4e-msg-is-archived msg)       'nano-mu4e-archived)
+                      ((nano-mu4e-msg-is-sent msg)           'nano-mu4e-sent)
+                      ((nano-mu4e-msg-is-related  msg)       'nano-mu4e-related)
                       ((and (nano-mu4e-msg-is-unread msg)
-                            (nano-mu4e-msg-is-archived msg)) '(shadow bold))
-                      ((nano-mu4e-msg-is-sent msg)           'shadow)
+                            (nano-mu4e-msg-is-archived msg)) '(nano-mu4e-unread
+                                                               nano-mu4e-archived))
                       (t                                     'default))))
     (propertize
      (concat
       (mu4e~headers-docid-cookie (nano-mu4e-msg-docid msg))             
       (nano-mu4e-justify
-       (list ;; "   "
-             (propertize (nano-mu4e-message-symbol msg) 'nano-mu4e-mark t)
+       (list (if (nano-mu4e-msg-is-related  msg)
+                 (propertize "    "
+                             'face 'nano-mu4e-gutter-body
+                             'nano-mu4e-mark t)
+               (propertize (format " %s " (nano-mu4e-symbol 'match))
+                           'face 'nano-mu4e-gutter-match
+                           'nano-mu4e-mark t))
              (propertize (nano-mu4e-thread-prefix msg) 'face 'shadow)
              (propertize " " 'face face)
+             (cond ((nano-mu4e-msg-is-encrypted msg)
+                    (concat 
+                      (nano-mu4e-make-button
+                       (propertize (nano-mu4e-symbol 'encrypted) 'face 'shadow)
+                       "flag:encrypted"
+                       "Search for encrypted mails")
+                      " "))
+                   ((nano-mu4e-msg-is-signed msg)
+                    (concat 
+                     (nano-mu4e-make-button
+                      (propertize (nano-mu4e-symbol 'signed) 'face 'shadow)
+                      "flag:signed"
+                      "Search for signed emails")
+                     " "))
+
+                   ((nano-mu4e-msg-is-sent msg)
+                    (concat 
+                     (nano-mu4e-make-button
+                      (propertize (nano-mu4e-symbol 'sent) 'face 'shadow)
+                      "flag:sent"
+                      "Search for sent emails")
+                     " ")))
              (propertize (nano-mu4e-msg-from msg) 'face face)
              (when (nano-mu4e-msg-has-attach msg)
                (propertize "  " 'face 'shadow))
-             (when (not mu4e-search-threads)
+             (when (not  mu4e-search-threads)
                (concat " — "
-                       (propertize (nano-mu4e-msg-subject msg) 'face face))))
+                       (propertize (nano-mu4e-msg-subject msg) 'face face)))
+             (if (and (> (length tags) 0) (not is-root))
+                 (format " (%s)" tags)
+               "")
+             )
        (list
-        (propertize (nano-mu4e-msg-date msg) 'face face
-                                             'nano-mu4e-date t)))
-      (when (and nano-mu4e-msg-preview-func
+        (propertize (nano-mu4e-msg-date msg)  'face face
+                                             'nano-mu4e-date t)
+        " "
+        (propertize (nano-mu4e-message-symbol msg) 'nano-mu4e-mark t)))
+      (when (and nano-mu4e-msg-preview
+                 nano-mu4e-msg-preview-func
                  (funcall nano-mu4e-msg-preview-func msg))
          (propertize
-          (concat (propertize " " 'display "\n" 'face 'nano-mu4e-preview-face)
+          (concat (propertize " " 'display "\n" 'face 'nano-mu4e-preview)
                   (if (and mu4e-search-threads
                            (memq nano-mu4e-style '(boxed compact)))
                       (nano-mu4e-fill
-                          (propertize (nano-mu4e-msg-preview msg) 'face 'nano-mu4e-preview-face)
+                          (propertize (nano-mu4e-msg-preview msg) 'face 'nano-mu4e-preview)
                           (- width 12)
-                          (concat (propertize "│    " 'face 'nano-mu4e-border-face)
-                                  (propertize "┊ "    'face 'nano-mu4e-preview-face))
-                          (propertize "│"  'face 'nano-mu4e-border-face))
+                          (concat (propertize "│    " 'face 'nano-mu4e-border)
+                                  (propertize "┊ "    'face 'nano-mu4e-preview))
+                          (propertize "│"  'face 'nano-mu4e-border))
                     (nano-mu4e-fill
-                          (propertize (nano-mu4e-msg-preview msg)  'face 'nano-mu4e-preview-face)
-                          (- width 10)
-                          (propertize "   ┊ " 'face 'nano-mu4e-preview-face)
-                          "")))
-          ;;          'face '(:weight regular :inherit (nano-default italic))
-          )))
+                     (propertize (nano-mu4e-msg-preview msg)  'face 'nano-mu4e-preview)
+                     (- width 10)
+                     (concat
+                      (propertize "    " 'face 'nano-mu4e-gutter-body)
+                      (propertize " ┊ " 'face 'nano-mu4e-preview))
+                     ""))))))
       'msg msg)))
+
+
+;;; Headers buffer population
+;;; ------------------------------------------------------------------------
 
 (defvar-local nano-mu4e--message-list nil
   "Full message list that is populated during the append handler call.")
@@ -1086,7 +1132,7 @@ This is suitable for displaying in the header view."
 (defun nano-mu4e-append-handler (msglst)
   "This handler differs from the default one since it first collects all
 messages in a single list that is stored locally in the headers
-buffer. This is necessary to get the whole message list to insrument
+buffer. This is necessary to get the whole message list to instrument
 it. The actual writing to the headers buffer will be done in the found
 handler."
     
@@ -1103,16 +1149,13 @@ handler."
   
   (when (buffer-live-p (mu4e-get-headers-buffer))
     (with-current-buffer (mu4e-get-headers-buffer)
-      (message "MU4E thread mode: %s" 
       (setq nano-mu4e-mode t)
       (setq-local hl-line-range-function
                   #'nano-mu4e-headers-hl-line-range)
       (save-excursion
-        (let ((inhibit-read-only t))
+        (let ((inhibit-read-only t)
+              (index 1))
           (goto-char (point-max))
-
-          ;;(seq-map-indexed
-          (setq index 1)
           (seq-do
            (lambda (msg)
              ;; Subject line
@@ -1128,7 +1171,7 @@ handler."
              (when (and mu4e-search-threads
                         (nano-mu4e-msg-is-thread-last msg))
                (insert (nano-mu4e-thread-bottom msg))))
-           msglst)))))))
+           msglst))))))
 
 (defun nano-mu4e-found-handler (&optional count)
   "This function first writes all the messages in the headers buffer and
@@ -1149,6 +1192,21 @@ then call the default found handler."
         (when hl-line-mode
           (hl-line-highlight))))))
 
+(defun nano-mu4e-search-rerun (&rest _args)
+  "Save the current docid"
+  
+  (let* ((msg (mu4e-message-at-point t))
+         (docid (nano-mu4e-msg-docid msg)))
+    (setq nano-mu4e--message-list nil
+          nano-mu4e--docid docid)))
+
+(defun nano-mu4e-nop (&rest _args)
+  "Do nothing")
+
+
+;;; Marks and overlays
+;;; ------------------------------------------------------------------------
+
 (defun nano-mu4e-mark-as-new (&optional msg)
   "Mark as MSG as new"
   
@@ -1156,7 +1214,97 @@ then call the default found handler."
   (let* ((msg (or msg (mu4e-message-at-point)))
          (docid (plist-get msg :docid)))
     (when docid
-      (mu4e--server-move docid nil "N"))))
+      (mu4e--server-move docid nil "N" t)
+      (sleep-for 0.01)
+      (nano-mu4e-refresh))))
+
+(defun nano-mu4e-mark-execute-all (&optional _no-confirmation)
+  "Make sure we're on a msg after execution."
+
+  (interactive)
+  (mu4e-mark-execute-all t)
+  (nano-mu4e-refresh))
+
+(defun nano-mu4e-headers-mark-and-next (mark)
+  "Set MARK on the message at point or in region.
+ Then, move to the next message."
+   (interactive)
+   (when (mu4e-thread-message-folded-p)
+     (mu4e-warn "Cannot mark folded messages"))
+   (mu4e-mark-set mark)
+   (nano-mu4e-next-msg))
+
+(defun nano-mu4e-mark (target &optional mark)
+  "Add MARK and TARGET to the display of message at point."
+  
+  (save-excursion
+    (beginning-of-line)
+    (when-let* ((match (text-property-search-forward 'nano-mu4e-mark t t nil))
+                (overlay (make-overlay (prop-match-beginning match)
+                                       (prop-match-end match))))
+      (overlay-put overlay 'display (propertize
+                                     (format " %s " (or mark (nano-mu4e-symbol 'mark)))
+                                     'face 'nano-mu4e-gutter-mark))
+      (overlay-put overlay 'mu4e-mark t)
+      (overlay-put overlay 'evaporate t))    
+    (beginning-of-line)
+    (when-let* ((match (text-property-search-forward 'nano-mu4e-date t t nil))
+                (overlay (make-overlay (prop-match-beginning match)
+                                       (prop-match-end match))))
+      (overlay-put overlay 'display (propertize (format "%20s" target)
+                                                'face 'nano-mu4e-system))
+      (overlay-put overlay 'mu4e-mark t)
+      (overlay-put overlay 'evaporate t))))
+
+(defun nano-mu4e-mark-at-point (mark target)
+  "Mark message at point with given MARK and TARGET"
+  
+  (interactive)
+  (let* ((msg (mu4e-message-at-point))
+         (docid (mu4e-message-field msg :docid))
+         (markdesc (cdr (or (assq mark mu4e-marks)
+                            (mu4e-error "Invalid mark %S" mark))))
+         (get-markkar (lambda (char)
+                        (if (listp char)
+                            (if mu4e-use-fancy-chars (cdr char) (car char))
+                          char)))
+         (markkar (funcall get-markkar (plist-get markdesc :char)))
+         (target (mu4e--mark-get-dyn-target mark target))
+         (show-fct (plist-get markdesc :show-target))
+         (shown-target (if show-fct
+                           (funcall show-fct target)
+                         (if target (format "%S" target)))))
+         
+    (unless docid (mu4e-warn "No message on this line"))
+    (unless (eq major-mode 'mu4e-headers-mode)
+      (mu4e-error "Not in headers-mode"))
+    (save-excursion
+      (remhash docid mu4e--mark-map)
+      (remove-overlays (line-beginning-position) (line-end-position)
+                       'mu4e-mark t)
+      (unless (eql mark 'unmark)
+        (puthash docid (cons mark target) mu4e--mark-map)
+        (nano-mu4e-mark shown-target markkar)
+        docid))))
+
+;;; Navigation commands
+;;; ------------------------------------------------------------------------
+
+(defun nano-mu4e-headers-hl-line-range ()
+  (save-excursion
+    (when-let ((match (text-property-search-forward 'from t t nil))
+               (beg (prop-match-beginning match))
+               (match (text-property-search-forward 'date t t nil))
+               (match (text-property-search-forward 'date nil t nil))
+               (end (prop-match-beginning match)))
+      (cons beg end))))
+
+
+(defun nano-mu4e-mouse-click ()
+  "Move point to nearest message."
+
+  (interactive)
+  (nano-mu4e-prev-msg))
 
 (defun nano-mu4e-check-cursor ()
   "Check if cursor is beyond messages and move point to the last msg if
@@ -1165,31 +1313,6 @@ this is the case."
   (interactive)
   (when (eobp)
     (nano-mu4e-prev-msg)))
-
-(defun nano-mu4e-cycle ()
-  "Cycle display style"
-  
-  (interactive)
-  (let* ((styles '(#1=simple regular compact boxed #1#)))
-    (setq nano-mu4e-style
-          (cadr (member nano-mu4e-style styles)))
-    (nano-mu4e-refresh)))
-
-(defun nano-mu4e-refresh ()
-  "Refresh headers view"
-  
-  (interactive)
-  (when (buffer-live-p (mu4e-get-headers-buffer))
-    (with-current-buffer (mu4e-get-headers-buffer)
-      (when-let* ((inhibit-read-only t)
-                  (msg (mu4e-message-at-point))
-                  (docid (nano-mu4e-msg-docid msg)))
-        ;; Set our own range function for highlight
-        (setq-local hl-line-range-function
-                    #'nano-mu4e-headers-hl-line-range)
-        (erase-buffer)
-        (nano-mu4e-found-handler (length nano-mu4e--message-list))
-        (nano-mu4e-goto-msg docid)))))
 
 (defun nano-mu4e-goto-msg (docid)
   "Move point to the message with given docid."
@@ -1313,13 +1436,6 @@ If no such message is found, leave the point unchanged."
   (when-let ((prop-match (text-property-search-backward 'root t t t)))
     (goto-char (prop-match-beginning prop-match))))
 
-(defun nano-mu4e-mark-execute-all (&optional _no-confirmation)
-  "Make sure we're on a msg after execution."
-
-  (interactive)
-  (mu4e-mark-execute-all t)
-  ;; (mu4e-search-rerun)
-  )
 
 (defun nano-mu4e-fold-toggle ()
   "Fold current thread and make sure point is on a thread"
@@ -1337,14 +1453,135 @@ If no such message is found, leave the point unchanged."
   (when (get-char-property (point) 'mu4e-thread-folded)
     (nano-mu4e-prev-thread)))
 
-(defun nano-mu4e-headers-hl-line-range ()
-  (save-excursion
-    (when-let ((match (text-property-search-forward 'from t t nil))
-               (beg (prop-match-beginning match))
-               (match (text-property-search-forward 'date t t nil))
-               (match (text-property-search-forward 'date nil t nil))
-               (end (prop-match-beginning match)))
-      (cons beg end))))
+
+
+;;; Style cycling and refresh
+;;; ------------------------------------------------------------------------
+
+(defun nano-mu4e-cycle ()
+  "Cycle display style"
+  
+  (interactive)
+  (let* ((styles '(#1=simple regular compact boxed #1#)))
+    (setq nano-mu4e-style
+          (cadr (member nano-mu4e-style styles)))
+    (nano-mu4e-refresh)))
+
+(defun nano-mu4e-refresh ()
+  "Refresh headers view"
+  
+  (interactive)
+  (when (buffer-live-p (mu4e-get-headers-buffer))
+    (with-current-buffer (mu4e-get-headers-buffer)
+      (when-let* ((inhibit-read-only t)
+                  (msg (mu4e-message-at-point t))
+                  (docid (nano-mu4e-msg-docid msg)))
+        ;; Set our own range function for highlight
+        (setq-local hl-line-range-function
+                    #'nano-mu4e-headers-hl-line-range)
+        ;; Rebuild list from headers buffer messages
+        (setq nano-mu4e--message-list
+              (let (messages)
+                (save-excursion
+                  (goto-char (point-min))
+                  (while (not (eobp))
+                    (when-let ((msg (mu4e-message-at-point t)))
+                      (push msg messages))
+                    (forward-line 1)))
+                (nreverse messages)))
+        (erase-buffer)
+        (nano-mu4e-found-handler (length nano-mu4e--message-list))
+        (nano-mu4e-goto-msg docid)))))
+
+(defun nano-mu4e-toggle-todo-root (&optional msg)
+  "Toggle the \"TODO\" tag on MSG thread root.
+The mark is executed immediately."
+
+  (interactive)
+  (when-let* ((msg (or msg (mu4e-message-at-point)))
+              (msg (if (nano-mu4e-msg-is-thread-root msg)
+                       msg
+                     (progn
+                       (nano-mu4e-prev-thread)
+                       (mu4e-message-at-point)))))
+    (nano-mu4e-toggle-todo msg)))
+
+(defun nano-mu4e-toggle-todo (&optional msg)
+  "Toggle the \"TODO\" tag on MSG thread root.
+The mark is executed immediately."
+
+  (interactive)
+  (let* ((msg (or msg (mu4e-message-at-point)))
+         (docid (plist-get msg :docid))
+         (tags-list (mu4e-message-field msg :tags))
+         (tags-list (if (member "TODO" tags-list)
+                        (remove "TODO" tags-list)
+                      (append tags-list (list "TODO"))))
+         (tags-string (mapconcat #'identity tags-list ",")))
+    (when docid
+      (mu4e-mark-set 'tag tags-string)
+      (nano-mu4e-mark-execute-all t)
+      ;; TODO add early exit
+      (dolist (item nano-mu4e--message-list)
+        (when (= (plist-get item :docid) docid)
+          (plist-put item :tags tags-list)))
+      (nano-mu4e-refresh))))
+
+(defvar nano-mu4e-tags-history nil
+  "Minibuffer history of tag strings.")
+
+(defun nano-mu4e-edit-tags-root (&optional msg)
+  "Edit the tags of MSG thread root."
+
+  (interactive)
+  (when-let* ((msg (or msg (mu4e-message-at-point)))
+              (msg (if (nano-mu4e-msg-is-thread-root msg)
+                       msg
+                     (progn
+                       (nano-mu4e-prev-thread)
+                       (mu4e-message-at-point)))))
+    (nano-mu4e-edit-tags msg)))
+
+(defun nano-mu4e-edit-tags (&optional msg)
+  "Edit the tags of MSG (default: message at point).
+
+Prompts for a comma-separated list of tags in the minibuffer with completion,
+using individual tags from `nano-mu4e-tags-history' as candidates.
+Updates the history by splitting the input so only individual tags are stored."
+  (interactive)
+  (let* ((msg (or msg (mu4e-message-at-point)))
+         (msg (if (nano-mu4e-msg-is-thread-root msg)
+                  msg
+                (progn
+                  (nano-mu4e-prev-thread)
+                  (mu4e-message-at-point))))
+         (docid (plist-get msg :docid))
+         (tags (mu4e-message-field msg :tags))
+         (tags (completing-read-multiple
+                "Tags: "
+                nano-mu4e-tags-history
+                nil nil
+                (mapconcat #'identity tags ",")
+                nil))
+         (input (mapconcat #'identity tags ",")))
+    (when docid
+      (mu4e-mark-set 'tag input)
+      (nano-mu4e-mark-execute-all t)
+      ;; TODO add early exit
+      (dolist (item nano-mu4e--message-list)
+        (when (= (plist-get item :docid) docid)
+          (plist-put item :tags tags)))
+      (nano-mu4e-refresh)
+
+      (dolist (tag tags)
+        (let ((trimmed (string-trim tag)))
+          (unless (string-empty-p trimmed)
+            (setq nano-mu4e-tags-history (delete trimmed nano-mu4e-tags-history))
+            (push trimmed nano-mu4e-tags-history)))))))
+ 
+
+;;; Minor mode
+;;; ------------------------------------------------------------------------
 
 ;; This adds our custom view inside mu4e
 (add-to-list 'mu4e-header-info-custom
@@ -1352,96 +1589,39 @@ If no such message is found, leave the point unchanged."
                                    :shortname "NΛNO mu4e"
                                    :function nano-mu4e-message-line)))
 
-(defun nano-mu4e-search-rerun (&rest _args)
-  "Save the current docid"
-  
-  (let* ((msg (mu4e-message-at-point t))
-         (docid (nano-mu4e-msg-docid msg)))
-    (setq nano-mu4e--docid docid)))
-
-(defun nano-mu4e-nop (&rest _args)
-  "Do nothing")
-
-(defun nano-mu4e-headers-mark-and-next (mark)
-  "Set MARK on the message at point or in region.
- Then, move to the next message."
-   (interactive)
-   (when (mu4e-thread-message-folded-p)
-     (mu4e-warn "Cannot mark folded messages"))
-   (mu4e-mark-set mark)
-   (nano-mu4e-next-msg))
-
-(defun nano-mu4e-mark (target &optional mark)
-  "Add MARK and TARGET to the display of message at point."
-  
-  (save-excursion
-    (beginning-of-line)
-    (when-let* ((match (text-property-search-forward 'nano-mu4e-mark t t nil))
-                (overlay (make-overlay (prop-match-beginning match)
-                                       (prop-match-end match))))
-      (overlay-put overlay 'display (propertize (or mark (nano-mu4e-symbol 'mark))
-                                                'face 'mu4e-system-face))
-      (overlay-put overlay 'mu4e-mark t)
-      (overlay-put overlay 'evaporate t))
-    
-    (beginning-of-line)
-    (when-let* ((match (text-property-search-forward 'nano-mu4e-date t t nil))
-                (overlay (make-overlay (prop-match-beginning match)
-                                       (prop-match-end match))))
-      (overlay-put overlay 'display (propertize (format "%20s" target)
-                                                'face '(mu4e-system-face bold)))
-      (overlay-put overlay 'mu4e-mark t)
-      (overlay-put overlay 'evaporate t))))
-
-(defun nano-mu4e-mark-at-point (mark target)
-  "Mark message at point with given MARK and TARGET"
-  
-  (interactive)
-  (let* ((msg (mu4e-message-at-point))
-         (docid (mu4e-message-field msg :docid))
-         (markdesc (cdr (or (assq mark mu4e-marks)
-                            (mu4e-error "Invalid mark %S" mark))))
-         (get-markkar (lambda (char)
-                        (if (listp char)
-                            (if mu4e-use-fancy-chars (cdr char) (car char))
-                          char)))
-         (markkar (funcall get-markkar (plist-get markdesc :char)))
-         (target (mu4e--mark-get-dyn-target mark target))
-         (show-fct (plist-get markdesc :show-target))
-         (shown-target (if show-fct
-                           (funcall show-fct target)
-                         (if target (format "%S" target)))))
-         
-    (unless docid (mu4e-warn "No message on this line"))
-    (unless (eq major-mode 'mu4e-headers-mode)
-      (mu4e-error "Not in headers-mode"))
-    (save-excursion
-      (remhash docid mu4e--mark-map)
-      (remove-overlays (line-beginning-position) (line-end-position)
-                       'mu4e-mark t)
-      (unless (eql mark 'unmark)
-        (puthash docid (cons mark target) mu4e--mark-map)
-        (nano-mu4e-mark shown-target markkar)
-        docid))))
-
 (defun nano-mu4e-mode-on ()
    (setq mu4e-headers-append-func #'nano-mu4e-append-handler
          mu4e-found-func #'nano-mu4e-found-handler
          mu4e-headers-fields '((:nano-mu4e))
          mu4e--mark-fringe "")
-  (advice-add #'mu4e-thread-fold-info
-              :override #'nano-mu4e-thread-fold-info)
-  (advice-add #'mu4e-search-rerun
-              :before #'nano-mu4e-search-rerun)
-  (advice-add #'mu4e-search-bookmark
-              :before #'nano-mu4e-search-rerun)
-  (advice-add #'mu4e~headers-mark
-              :override #'nano-mu4e-nop)
-  (advice-add #'mu4e-mark-at-point
-              :override #'nano-mu4e-mark-at-point)
-  (advice-add #'mu4e-headers-mark-and-next
-              :override #'nano-mu4e-headers-mark-and-next)
-  (setq nano-mu4e-mode 1))
+
+   ;; Set mu4e-marks with NERD font v3.0 (oct collection)
+   (setq nano-mu4e--saved-marks (copy-tree mu4e-marks))
+   (setf (plist-get (alist-get 'refile mu4e-marks) :char)  '("(R)" . " ")
+         (plist-get (alist-get 'move mu4e-marks) :char)    '("(M)" . " ")
+         (plist-get (alist-get 'tag mu4e-marks) :char)     '("(T)" . " ")
+         (plist-get (alist-get 'action mu4e-marks) :char)  '("(A)" . " ")
+         (plist-get (alist-get 'delete mu4e-marks) :char)  '("(D)" . " ")
+         (plist-get (alist-get 'flag mu4e-marks) :char)    '("(F)" . " ")
+         (plist-get (alist-get 'unflag mu4e-marks) :char)  '("(F)" . " ")
+         (plist-get (alist-get 'read mu4e-marks) :char)    '("(!)" . " ")
+         (plist-get (alist-get 'unread mu4e-marks) :char)  '("(!)" . " ")
+         (plist-get (alist-get 'trash mu4e-marks) :char)   '("(x)" . " ")
+         (plist-get (alist-get 'untrash mu4e-marks) :char) '("(x)" . " "))
+
+   (advice-add #'mu4e-thread-fold-info
+               :override #'nano-mu4e-thread-fold-info)
+   (advice-add #'mu4e-search-rerun
+               :before #'nano-mu4e-search-rerun)
+   (advice-add #'mu4e-search-bookmark
+               :before #'nano-mu4e-search-rerun)
+   (advice-add #'mu4e~headers-mark
+               :override #'nano-mu4e-nop)
+   (advice-add #'mu4e-mark-at-point
+               :override #'nano-mu4e-mark-at-point)
+   (advice-add #'mu4e-headers-mark-and-next
+               :override #'nano-mu4e-headers-mark-and-next)
+   (setq nano-mu4e-mode 1))
   
 (defun nano-mu4e-mode-off ()
   (setq mu4e-headers-append-func #'mu4e~headers-append-handler
@@ -1452,6 +1632,8 @@ If no such message is found, leave the point unchanged."
                               (:from . 22)
                               (:subject))
         mu4e--mark-fringe "")
+  (setq mu4e-marks (copy-tree nano-mu4e--saved-marks))
+  
   (advice-remove #'mu4e-thread-fold-info
                  #'nano-mu4e-thread-fold-info)
   (advice-remove #'mu4e-search-rerun
@@ -1466,7 +1648,6 @@ If no such message is found, leave the point unchanged."
                  #'nano-mu4e-headers-mark-and-next)
   (mu4e-search-rerun)
   (setq nano-mu4e-mode nil))
-
 
 ;;;###autoload
 (define-minor-mode nano-mu4e-mode
