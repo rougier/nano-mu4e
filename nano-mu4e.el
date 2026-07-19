@@ -26,7 +26,7 @@
 ;;; Commentary:
 ;;
 ;; nano-mu4e is an opinionated headers view for mu4e where threads are
-;; clearly separated.
+;; clearly separated using boxex or blank 
 
 ;; Usage example:
 ;;
@@ -41,6 +41,9 @@
 ;;; Code:
 (require 'mu4e)
 
+;;; Customization groups
+;;; ------------------------------------------------------------------------
+
 (defgroup nano nil
   "N Λ N O"
   :group 'convenience)
@@ -53,7 +56,6 @@
   "N Λ N O Mu4e faces"
   :group 'nano-mu4e)
 
-(defcustom nano-mu4e-style 'boxed
 
 ;;; Faces
 ;;; ------------------------------------------------------------------------
@@ -171,44 +173,47 @@
 
 
 ;;; Customization variables
+;;; ------------------------------------------------------------------------
+
+(defcustom nano-mu4e-style 'regular
   "One of simple regular, boxed, or compact
 
 Simple:
 
-[L] Thread subject 1                                           TAG-1 TAG-2 [15]
-    Initial sender                                                    Yesterday
-    [13 hidden messages]                                                    ...
-    Recipient 1                                                  Today at 10:21 
-    ┊ New message content can be displayed inside the header view.
-    Recipient 2                                                  Today at 11:07 
+[15] Thread subject 1                                                TAG-1 TAG-2
+     Initial sender                                                    Yesterday
+     --------------------------- 13 hidden messages ----------------------------
+     Recipient 1                                                  Today at 10:21 
+     ┊ New message content can be displayed inside the header view.
+     Recipient 2                                                  Today at 11:07 
 
-[P] Thread subject 2                                                  TAG-3 [1]
-    Initial sender                                               Today at 10:32
+[ 1] Thread subject 2                                                      TAG-3
+     Initial sender                                               Today at 10:32
 
 
 Regular:
 
 ───────────────────────────────────────────────────────────────────────────────
-[L] Thread subject 1                                           TAG-1 TAG-2 [15]
-    Initial sender                                                    Yesterday
-    [13 hidden messages]                                                    ...
-    Recipient 1                                                  Today at 10:21 
-    ┊ New message content can be displayed inside the header view.
-    Recipient 2                                                  Today at 11:07 
+[15] Thread subject 1                                               TAG-1 TAG-2
+     Initial sender                                                   Yesterday
+     --------------------------- 13 hidden messages ---------------------------
+     Recipient 1                                                 Today at 10:21 
+     ┊ New message content can be displayed inside the header view.
+     Recipient 2                                                 Today at 11:07 
 ───────────────────────────────────────────────────────────────────────────────
-[P] Thread subject 2                                                  TAG-3 [1]
-    Initial sender                                               Today at 10:32
+[ 1] Thread subject 2                                                     TAG-3
+     Initial sender                                              Today at 10:32
 ───────────────────────────────────────────────────────────────────────────────
 
 Compact:
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ [L] Thread subject 1                                       TAG-1 TAG-2 [15] │
-│     Initial sender                                                Yesterday │
-│     [13 hidden messages]                                                ... │
-│     Recipient 1                                              Today at 10:21 │
-│     ┊ New message content can be displayed inside the header view.          │
-│     Recipient 2                                              Today at 11:07 │
+│ [15] Thread subject 1                                           TAG-1 TAG-2 │
+│      Initial sender                                               Yesterday │
+│      ------------------------- 13 hidden messages ------------------------- │
+│      Recipient 1                                             Today at 10:21 │
+│      ┊ New message content can be displayed inside the header view.         │
+│      Recipient 2                                             Today at 11:07 │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ [P] Thread subject 2                                              TAG-3 [1] │
 │     Initial sender                                           Today at 10:32 │
@@ -218,16 +223,16 @@ Compact:
 Boxed:
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ [L] Thread subject 1                                       TAG-1 TAG-2 [15] │
+│ [15] Thread subject 1                                           TAG-1 TAG-2 │
 │     Initial sender                                                Yesterday │
-│     [13 hidden messages]                                                ... │
+│     ------------------------- 13 hidden messages -------------------------- │
 │     Recipient 1                                              Today at 10:21 │
 │     ┊ New message content can be displayed inside the header view.          │
 │     Recipient 2                                              Today at 11:07 │
 └─────────────────────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ [P] Thread subject 2                                              TAG-3 [1] │
-│     Initial sender                                           Today at 10:32 │
+│ [ 1] Thread subject 2                                                 TAG-3 │
+│      Initial sender                                          Today at 10:32 │
 └─────────────────────────────────────────────────────────────────────────────┘
 "
   :group 'nano-mu4e
