@@ -1658,14 +1658,17 @@ Updates the history by splitting the input so only individual tags are stored."
                 (cons (kbd "S-<up>")     #'nano-mu4e-prev-thread)
                 (cons (kbd "S-<down>")   #'nano-mu4e-next-thread)
                 (cons (kbd "<SPC>")      #'nano-mu4e-mark-as-new)
-                (cons (kbd "<mouse-1>")  #'nano-mu4e-check-cursor)
+                (cons (kbd "<mouse-1>")  #'nano-mu4e-mouse-click)
                 (cons (kbd "p")          #'nano-mu4e-prev-unread-msg)
                 (cons (kbd "n")          #'nano-mu4e-next-unread-msg)
                 (cons (kbd "x")          #'nano-mu4e-mark-execute-all)
+                (cons (kbd "t")          #'nano-mu4e-toggle-todo-root)
+                (cons (kbd "T")          #'nano-mu4e-toggle-todo)
+                (cons (kbd "g")          #'nano-mu4e-edit-tags-root)
+                (cons (kbd "G")          #'nano-mu4e-edit-tags)
                 (cons (kbd ":")          #'nano-mu4e-cycle)
                 (cons (kbd "<TAB>")      #'nano-mu4e-fold-toggle)
                 (cons (kbd "<backtab>")  #'nano-mu4e-fold-toggle-all))
-
   (if (derived-mode-p '(mu4e-headers-mode))
       (if nano-mu4e-mode
           (nano-mu4e-mode-on)
@@ -1678,7 +1681,6 @@ Updates the history by splitting the input so only individual tags are stored."
   (interactive)
   (mu4e t)
   (mu4e-search (mu4e-get-bookmark-query ?i)))
-
 
 (provide 'nano-mu4e)
 ;;; nano-mu4e.el ends here
