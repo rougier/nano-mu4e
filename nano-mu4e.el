@@ -1098,41 +1098,94 @@ this is the case."
   (let ((found))
     (catch 'found
       (while (nano-mu4e-next-msg)
-        (when (eq (nano-mu4e-msg-docid (mu4e-message-at-point)) docid)
+        (when (= (nano-mu4e-msg-docid (mu4e-message-at-point)) docid)
           (setq found t)
           (throw 'found docid))))
     found))
 
 (defun nano-mu4e-next-msg (&optional _n)
-  "Move point to the next message ('from properties)"
-  
+  "Move point to the next unfolded message ('from properties).
+If no such message is found, leave the point unchanged."
   (interactive)
-  (when-let ((prop-match (text-property-search-forward 'from t t t)))
-    (goto-char (prop-match-beginning prop-match))
-    (if (get-char-property (point) 'mu4e-thread-folded)
-        (nano-mu4e-next-msg)
-      (point))))
-
-(defun nano-mu4e-next-unread-msg (&optional _n)
-  "Move point to the next message ('from properties)"
-  
-  (interactive)
-  (when-let ((prop-match (text-property-search-forward 'from t t t)))
-    (goto-char (prop-match-beginning prop-match))
-    (if (or (not (nano-mu4e-msg-is-unread (mu4e-message-at-point)))
-            (get-char-property (point) 'mu4e-thread-folded))
-        (nano-mu4e-next-unread-msg)
-      (point))))
+  (let ((found
+         (save-excursion
+           (catch 'found
+             (while t
+               (if-let ((prop-match (text-property-search-forward 'from t t t)))
+                   (progn
+                     (goto-char (prop-match-beginning prop-match))
+                     (if (not (get-char-property (point) 'mu4e-thread-folded))
+                         (throw 'found (point))
+                       nil))
+                 (throw 'found nil)))))))
+    (if found
+        (goto-char found)
+      (message "No next message"))
+    found))
 
 (defun nano-mu4e-prev-msg (&optional _n)
-  "Move point to the previous message ('from properties)"
-  
+  "Move point to the previous unfolded message.
+If no such message is found, leave the point unchanged."
   (interactive)
-  (when-let ((prop-match (text-property-search-backward 'from t t t)))
-    (goto-char (prop-match-beginning prop-match))
-    (if (get-char-property (point) 'mu4e-thread-folded)
-        (nano-mu4e-prev-msg)
-      (point))))
+  (let ((found
+         (save-excursion
+           (catch 'found
+             (while t
+               (if-let ((prop-match (text-property-search-backward 'from t t t)))
+                   (progn
+                     (goto-char (prop-match-beginning prop-match))
+                     (if (not (get-char-property (point) 'mu4e-thread-folded))
+                         (throw 'found (point))
+                       (backward-char 1)))
+                 (throw 'found nil)))))))
+    (if found
+        (goto-char found)
+      (message "No previous message"))
+    found))
+
+(defun nano-mu4e-next-unread-msg (&optional _n)
+  "Move point to the next unread and unfolded message.
+If no such message is found, leave the point unchanged."
+
+  (interactive)
+  (let (found
+        (save-excursion
+          (catch 'found
+            (while t
+              (if-let ((prop-match (text-property-search-forward 'from t t t)))
+                  (progn
+                    (goto-char (prop-match-beginning prop-match))
+                    (when (and (nano-mu4e-msg-is-unread (mu4e-message-at-point))
+                               (not (get-char-property (point) 'mu4e-thread-folded)))
+                      (throw 'found (point))))
+                (throw 'found nil))))))
+    (if found
+        (goto-char found)
+      (message "No next unread message"))
+    found))
+
+
+(defun nano-mu4e-prev-unread-msg (&optional _n)
+  "Move point to the previous unread and unfolded message.
+If no such message is found, leave the point unchanged."
+
+  (interactive)
+  (let ((found
+         (save-excursion
+           (catch 'found
+             (while t
+               (if-let ((prop-match (text-property-search-backward 'from t t t)))
+                   (progn
+                     (goto-char (prop-match-beginning prop-match))
+                     (if (and (nano-mu4e-msg-is-unread (mu4e-message-at-point))
+                              (not (get-char-property (point) 'mu4e-thread-folded)))
+                         (throw 'found (point))
+                       (backward-char 1)))
+                 (throw 'found nil)))))))
+    (if found
+        (goto-char found)
+      (message "No previous unread message"))
+    found))
 
 (defun nano-mu4e-prev-unread-msg (&optional _n)
   "Move point to the previous message ('from properties)"
