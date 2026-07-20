@@ -83,7 +83,7 @@
   :group 'nano-mu4e-faces)
 
 (defface nano-mu4e-tag-inactive
-  `((t :inherit (default)
+  `((t :inherit (shadow bold)
        :inverse-video nil))
   "Face for tags when inactive."
   :group 'nano-mu4e-faces)
@@ -175,7 +175,15 @@
 ;;; Customization variables
 ;;; ------------------------------------------------------------------------
 
-(defcustom nano-mu4e-style 'regular
+(defcustom nano-mu4e-tag-style 'round
+  "One of regular, square or round."
+  :group 'nano-mu4e
+  :type '(choice (const :tag "Regular"                  regular)
+                 (const :tag "Square"                   square)
+                 (const :tag "Round (NERD font needed)" round)))
+
+  
+(defcustom nano-mu4e-view-style 'regular
   "One of simple regular, boxed, or compact
 
 Simple:
@@ -236,10 +244,10 @@ Boxed:
 └─────────────────────────────────────────────────────────────────────────────┘
 "
   :group 'nano-mu4e
-  :type '(choice (const :tag "Simple" simple)
+  :type '(choice (const :tag "Simple"  simple)
                  (const :tag "Regular" regular)
                  (const :tag "Compact" compact)
-                 (const :tag "Boxed" boxed)))
+                 (const :tag "Boxed"   boxed)))
 
 (defcustom nano-mu4e-msg-preview nil
   "Whether to preview message."
@@ -287,7 +295,7 @@ be done with a display property or spaces depending on USE-SPACE."
   
   (let* ((width (window-width))
          (has-border (and mu4e-search-threads
-                      (memq nano-mu4e-style '(boxed compact))))
+                      (memq nano-mu4e-view-style '(boxed compact))))
          (left-edge (or left-edge (if has-border "│ " "")))
          (right-edge (or right-edge (if has-border " │" "")))
          (left (concat (propertize left-edge 'face 'nano-mu4e-border)
@@ -334,7 +342,7 @@ When clicked, a new SEARCH is initiated."
                    "<header-line> <mouse-2>" #'push-button)))
     (propertize text
                 'pointer 'hand
-                'mouse-face (or mouse-face 'bold)
+;;                'mouse-face (or mouse-face 'bold)
                 'help-echo help
                 'button t
                 'follow-link t
@@ -420,35 +428,28 @@ When clicked, a new SEARCH is initiated."
              'date t))))
 
 
-(defun nano-mu4e-make-tag (tag)
-  "Make a clickable TAG button"
+(defun nano-mu4e-make-tag (tag &optional style is-active is-todo)
+  "Make a clickable TAG button using provided STYLE"
 
-    (nano-mu4e-make-button tag
+  (let* ((style (or style nano-mu4e-tag-style))
+         (face (cond (is-todo   'nano-mu4e-todo)
+                     (is-active 'nano-mu4e-tag-active)
+                     (t         'nano-mu4e-tag-inactive)))
+         (tag (cond
+               ((eq style 'round)
+                (concat (propertize "" 'face `(:inherit ,face))
+                        (propertize tag 'face `(:inherit ,face :inverse-video t))
+                        (propertize "" 'face `(:inherit ,face))))
+               ((eq style 'square)
+                (concat (propertize " " 'face `(:inherit ,face :inverse-video t))
+                        (propertize tag 'face `(:inherit ,face :inverse-video t))
+                        (propertize "▕" 'face `(:inherit ,face :inverse-video t))))
+               (t
+                (concat (propertize tag 'face `(:inherit ,face)))))))
+      (nano-mu4e-make-button tag
                          (format "tag:%s" tag)
                          (format "Search for tag %s" tag)
-                         '(link bold)))
-
-(defun nano-mu4e-msg-tags-root (msg)
-    "Return a string of tags from MSG."
-    (let* ((unread-count (nano-mu4e-thread-unread-count msg))
-           (tags-list (mu4e-message-field msg :tags))
-           (tags-list (if (member "TODO" tags-list)
-                          (append (remove "TODO" tags-list) '("TODO"))
-                        tags-list))
-           (face (if (> unread-count 0)
-                     'nano-mu4e-tag-active
-                   'nano-mu4e-tag-inactive)))
-      (if (> (length tags-list) 0)
-          (mapconcat
-           (lambda (tag)
-             (propertize (concat (nano-mu4e-symbol 'tag)
-                                  ""
-                                 (nano-mu4e-make-tag tag) "")
-                         'face (if (string= tag "TODO")
-                                   'nano-mu4e-todo
-                                 face)))                                 
-           tags-list (propertize " " 'face face))
-         "")))
+                         '(:weight bold))))
 
 (defun nano-mu4e-msg-tags (msg)
     "Return a string of tags from MSG."
@@ -457,17 +458,20 @@ When clicked, a new SEARCH is initiated."
            (tags-list (if (member "TODO" tags-list)
                           (append (remove "TODO" tags-list) '("TODO"))
                         tags-list))
+           (style nano-mu4e-tag-style)
+           (sep (cond ((eq style 'round)  " ")
+                      ((eq style 'square) "")
+                      (t                  ",")))
+           (is-active (> unread-count 0))
            (face (if (> unread-count 0)
                      'nano-mu4e-tag-active
                    'nano-mu4e-tag-inactive)))
       (if (> (length tags-list) 0)
           (mapconcat
            (lambda (tag)
-             (propertize (nano-mu4e-make-tag tag)
-                         'face (if (string= tag "TODO")
-                                   'nano-mu4e-todo
-                                 face)))                                 
-           tags-list (propertize "," 'face face))
+             (let ((is-todo (string= tag "TODO")))
+               (nano-mu4e-make-tag tag style is-active is-todo)))
+           tags-list (propertize sep 'face face))
          "")))
 
 (defun nano-mu4e-msg-subject (msg)
@@ -646,11 +650,11 @@ When clicked, a new SEARCH is initiated."
   (let* ((window-width (window-width))
          (message (format " %d hidden messages " count))
          (msg-length (length message))
-         (left-edge (if (memq nano-mu4e-style '(boxed compact))
+         (left-edge (if (memq nano-mu4e-view-style '(boxed compact))
                         (propertize "├" 'face 'nano-mu4e-border)
                       (concat (propertize " -- " 'face 'nano-mu4e-gutter-body)
                               " ")))
-         (right-edge (if (memq nano-mu4e-style '(boxed compact))
+         (right-edge (if (memq nano-mu4e-view-style '(boxed compact))
                         (propertize "┤" 'face 'nano-mu4e-border)
                        (propertize "╴" 'face 'shadow)))
          (line-char "╴")
@@ -749,7 +753,8 @@ For each thread root message, mark them with:
 - thread unread last (:thread-unread-last docid)
 "
   
-  (let ((prev-msg nil)
+  (let ((total 0)
+        (prev-msg nil)
         (thread-count 0)
         (thread-root nil)
         (thread-unread-count 0)
@@ -759,9 +764,13 @@ For each thread root message, mark them with:
       (let* ((meta (plist-get msg :meta))
              (flags (plist-get msg :flags))
              (orphan (plist-get meta :orphan))
+             (is-related (nano-mu4e-msg-is-related msg))
              (first-child (plist-get meta :first-child))
              (is-root (or (plist-get meta :root) (and orphan first-child)))
-             (is-unread (memq 'unread flags)))      
+             (is-unread (memq 'unread flags)))
+
+        (unless is-related (setq total (1+ total)))
+        
         (when is-root
           ;; Update thread root information
           (when thread-root
@@ -793,6 +802,8 @@ For each thread root message, mark them with:
           (setq thread-unread-last (plist-get msg :docid)))
         
         (setq prev-msg msg)))
+
+    (setq-local nano-mu4e--last-query-count total)
 
     ;; Update thread root information
     (when thread-root
@@ -899,36 +910,49 @@ For each thread root message, mark them with:
 
 (defun nano-mu4e-thread-top (msg)
   "Delimits a thread MSG at the top.
-It depends on the nano-mu4e-style."
+It depends on the nano-mu4e-view-style."
 
-  (propertize
-   (let ((first (nano-mu4e-msg-is-first msg))
+  (let ((first (nano-mu4e-msg-is-first msg))
          (last (nano-mu4e-msg-is-last msg)))
-     (cond ((eq nano-mu4e-style 'boxed)
-            (concat "┌" (make-string (- (window-width) 3) ?─) "┐" "\n"))
-           ((eq nano-mu4e-style 'compact)
-            (if first 
-                (concat "┌" (make-string (- (window-width) 3) ?─) "┐" "\n")
-              ""))
-           (t (if first "\n" ""))))
-   'face 'nano-mu4e-border))
+    (concat
+     (if first
+         (concat 
+          (propertize (format "SEARCH (n=%d):" nano-mu4e--last-query-count)
+                      'face '(:inherit (nano-mu4e-system bold)
+                                       :inverse-video nil))
+          " "
+          (propertize (format "\"%s\"" mu4e--search-last-query)
+                      'face 'default)
+          (if (memq nano-mu4e-view-style '(boxed compact))
+              "\n"
+            "\n\n")
+       ""))
+     (propertize
+      (cond ((eq nano-mu4e-view-style 'boxed)
+             (concat "┌" (make-string (- (window-width) 3) ?─) "┐" "\n"))
+            ((eq nano-mu4e-view-style 'compact)
+             (if first 
+                 (concat "┌" (make-string (- (window-width) 3) ?─) "┐" "\n")
+               ""))
+            (t  ""))
+     'face 'nano-mu4e-border))))
 
 (defun nano-mu4e-thread-bottom (msg)
   "Delimits a thread MSG at the bottom.
-It depends on the nano-mu4e-style."
+It depends on the nano-mu4e-view-style."
   
   (propertize
    (let ((first (nano-mu4e-msg-is-first msg))
          (last (nano-mu4e-msg-is-last msg)))
-     (cond ((eq nano-mu4e-style 'compact)
+     (cond ((eq nano-mu4e-view-style 'compact)
             (if last
                 (concat "└" (make-string (- (window-width) 3) ?─) "┘" "\n")
               (concat "├" (make-string (- (window-width) 3) ?─) "┤" "\n")))
 
-           ((eq nano-mu4e-style 'boxed)
+           ((eq nano-mu4e-view-style 'boxed)
             (concat "└" (make-string (- (window-width) 3) ?─) "┘" "\n"))
 
-            ((eq nano-mu4e-style 'regular)
+            ((eq nano-mu4e-view-style 'regular)
              (concat "" (make-string (- (window-width) 1) ?─) "\n"))
             (t
              "\n")))
@@ -993,12 +1017,12 @@ relies on the NERD font."
          (unread-count (nano-mu4e-thread-unread-count msg))
          (has-unread (> unread-count 0))
          (has-todo (nano-mu4e-msg-has-todo msg))
-         ;; (is-related (nano-mu4e-msg-is-related msg))
+         (is-related (nano-mu4e-msg-is-related msg))
          (from-github (nano-mu4e-msg-from-github msg))
          (is-list (nano-mu4e-msg-is-list msg))
          (is-personal (nano-mu4e-msg-is-personal msg))
          (face  (cond (has-unread 'nano-mu4e-title-active)
-                      ;; (is-related 'nano-mu4e-related)
+                      (is-related 'nano-mu4e-related)
                       (t          'nano-mu4e-title-inactive)))
          (subject (propertize (nano-mu4e-msg-subject msg)
                               'face face))
@@ -1106,7 +1130,7 @@ This is suitable for displaying in the header view."
          (propertize
           (concat (propertize " " 'display "\n" 'face 'nano-mu4e-preview)
                   (if (and mu4e-search-threads
-                           (memq nano-mu4e-style '(boxed compact)))
+                           (memq nano-mu4e-view-style '(boxed compact)))
                       (nano-mu4e-fill
                           (propertize (nano-mu4e-msg-preview msg) 'face 'nano-mu4e-preview)
                           (- width 12)
@@ -1458,13 +1482,22 @@ If no such message is found, leave the point unchanged."
 ;;; Style cycling and refresh
 ;;; ------------------------------------------------------------------------
 
-(defun nano-mu4e-cycle ()
-  "Cycle display style"
+(defun nano-mu4e-view-style-cycle ()
+  "Cycle headers view style"
   
   (interactive)
   (let* ((styles '(#1=simple regular compact boxed #1#)))
-    (setq nano-mu4e-style
-          (cadr (member nano-mu4e-style styles)))
+    (setq nano-mu4e-view-style
+          (cadr (member nano-mu4e-view-style styles)))
+    (nano-mu4e-refresh)))
+
+(defun nano-mu4e-tag-style-cycle ()
+  "Cycle tag style"
+  
+  (interactive)
+  (let* ((styles '(#1=regular square round #1#)))
+    (setq nano-mu4e-tag-style
+          (cadr (member nano-mu4e-tag-style styles)))
     (nano-mu4e-refresh)))
 
 (defun nano-mu4e-refresh ()
@@ -1666,7 +1699,8 @@ Updates the history by splitting the input so only individual tags are stored."
                 (cons (kbd "T")          #'nano-mu4e-toggle-todo)
                 (cons (kbd "g")          #'nano-mu4e-edit-tags-root)
                 (cons (kbd "G")          #'nano-mu4e-edit-tags)
-                (cons (kbd ":")          #'nano-mu4e-cycle)
+                (cons (kbd "@")          #'nano-mu4e-tag-style-cycle)
+                (cons (kbd ":")          #'nano-mu4e-view-style-cycle)
                 (cons (kbd "<TAB>")      #'nano-mu4e-fold-toggle)
                 (cons (kbd "<backtab>")  #'nano-mu4e-fold-toggle-all))
   (if (derived-mode-p '(mu4e-headers-mode))
