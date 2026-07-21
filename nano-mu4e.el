@@ -343,7 +343,7 @@ When clicked, a new SEARCH is initiated."
     (propertize text
                 'pointer 'hand
 ;;                'mouse-face (or mouse-face 'bold)
-                'help-echo help
+;;                'help-echo help
                 'button t
                 'follow-link t
                 'category t
@@ -1239,7 +1239,6 @@ then call the default found handler."
          (docid (plist-get msg :docid)))
     (when docid
       (mu4e--server-move docid nil "N" t)
-      (sleep-for 0.01)
       (nano-mu4e-refresh))))
 
 (defun nano-mu4e-mark-execute-all (&optional _no-confirmation)
@@ -1500,31 +1499,90 @@ If no such message is found, leave the point unchanged."
           (cadr (member nano-mu4e-tag-style styles)))
     (nano-mu4e-refresh)))
 
+(defun nano-mu4e--collect-messages ()
+  "Collect all message from the headers buffer and stored folded state for threads root."
+  (when (buffer-live-p (mu4e-get-headers-buffer))
+    (with-current-buffer (mu4e-get-headers-buffer)
+      (let (messages)
+        (save-excursion
+          (goto-char (point-min))
+          (while (not (eobp))
+            (when-let ((msg (mu4e-message-at-point t)))
+              (if (and (nano-mu4e-msg-is-thread-root msg)
+                       (mu4e-thread-is-folded))
+                  (plist-put msg :folded t)
+                (plist-put msg :folded nil))
+              (push msg messages))
+            (forward-line 1)))
+        (nreverse messages)))))
+
 (defun nano-mu4e-refresh ()
   "Refresh headers view"
   
   (interactive)
   (when (buffer-live-p (mu4e-get-headers-buffer))
     (with-current-buffer (mu4e-get-headers-buffer)
+
+      ;; Some temporisation is needed if some execution is in progress
+      ;; (not ideal though)
+      (sleep-for 0.01)
+
       (when-let* ((inhibit-read-only t)
                   (msg (mu4e-message-at-point t))
-                  (docid (nano-mu4e-msg-docid msg)))
-        ;; Set our own range function for highlight
-        (setq-local hl-line-range-function
-                    #'nano-mu4e-headers-hl-line-range)
-        ;; Rebuild list from headers buffer messages
-        (setq nano-mu4e--message-list
-              (let (messages)
-                (save-excursion
-                  (goto-char (point-min))
-                  (while (not (eobp))
-                    (when-let ((msg (mu4e-message-at-point t)))
-                      (push msg messages))
-                    (forward-line 1)))
-                (nreverse messages)))
+                  (docid (nano-mu4e-msg-docid msg))
+                  (messages (nano-mu4e--collect-messages)))
+        ;; Pass 1: render headers
         (erase-buffer)
-        (nano-mu4e-found-handler (length nano-mu4e--message-list))
+        (nano-mu4e--append messages)
+        
+        ;; Pass 2: apply saved folding state
+        (goto-char (point-min))
+        (when mu4e-thread-mode
+          (while (not (eobp))
+            (when-let* ((msg (mu4e-message-at-point t))
+                        (folded (plist-get msg :folded)))
+                (mu4e-thread-fold))
+            (forward-line 1)))
+
+        ;; Move point to saved docid
         (nano-mu4e-goto-msg docid)))))
+
+(defun nano-mu4e-rerun ()
+  "Re-run search and ensure folded threads remamin folded."
+
+  (interactive)
+  (when (buffer-live-p (mu4e-get-headers-buffer))
+    (with-current-buffer (mu4e-get-headers-buffer)
+      (let* ((msg (mu4e-message-at-point t))
+             (docid (nano-mu4e-msg-docid msg))
+             (folded-docids))
+
+        ;; Collect folded docids
+        (when mu4e-thread-mode
+          (goto-char (point-min))
+          (while (not (eobp))
+            (when-let ((msg (mu4e-message-at-point t))
+                       (docid (nano-mu4e-msg-docid msg)))
+              (if (and (nano-mu4e-msg-is-thread-root msg)
+                       (mu4e-thread-is-folded))
+                  (push docid folded-docids)))
+            (forward-line 1)))
+
+        ;; Pass 1: rerun search
+        (mu4e-search-rerun)
+        (sleep-for 0.01)
+
+        ;; Pass 2: apply saved folding state
+        (goto-char (point-min))
+        (when mu4e-thread-mode
+          (while (not (eobp))
+            (when-let* ((msg (mu4e-message-at-point t))
+                        (docid (nano-mu4e-msg-docid msg))
+                        (is-folded (memq docid folded-docids)))
+                (mu4e-thread-fold))
+            (forward-line 1)))
+        (nano-mu4e-goto-msg docid)
+        (recenter-top-bottom)))))
 
 (defun nano-mu4e-toggle-todo-root (&optional msg)
   "Toggle the \"TODO\" tag on MSG thread root.
@@ -1532,12 +1590,14 @@ The mark is executed immediately."
 
   (interactive)
   (when-let* ((msg (or msg (mu4e-message-at-point)))
+              (docid (plist-get msg :docid))
               (msg (if (nano-mu4e-msg-is-thread-root msg)
                        msg
                      (progn
                        (nano-mu4e-prev-thread)
                        (mu4e-message-at-point)))))
-    (nano-mu4e-toggle-todo msg)))
+    (nano-mu4e-toggle-todo msg)
+    (nano-mu4e-goto-msg docid)))
 
 (defun nano-mu4e-toggle-todo (&optional msg)
   "Toggle the \"TODO\" tag on MSG thread root.
@@ -1554,11 +1614,8 @@ The mark is executed immediately."
     (when docid
       (mu4e-mark-set 'tag tags-string)
       (nano-mu4e-mark-execute-all t)
-      ;; TODO add early exit
-      (dolist (item nano-mu4e--message-list)
-        (when (= (plist-get item :docid) docid)
-          (plist-put item :tags tags-list)))
-      (nano-mu4e-refresh))))
+      (nano-mu4e-refresh)
+      (nano-mu4e-goto-msg docid))))
 
 (defvar nano-mu4e-tags-history nil
   "Minibuffer history of tag strings.")
@@ -1597,15 +1654,14 @@ Updates the history by splitting the input so only individual tags are stored."
                 (mapconcat #'identity tags ",")
                 nil))
          (input (mapconcat #'identity tags ",")))
+    
     (when docid
       (mu4e-mark-set 'tag input)
       (nano-mu4e-mark-execute-all t)
-      ;; TODO add early exit
-      (dolist (item nano-mu4e--message-list)
-        (when (= (plist-get item :docid) docid)
-          (plist-put item :tags tags)))
       (nano-mu4e-refresh)
+      (nano-mu4e-goto-msg docid)
 
+      ;; Add new tags to tags history
       (dolist (tag tags)
         (let ((trimmed (string-trim tag)))
           (unless (string-empty-p trimmed)
@@ -1692,6 +1748,7 @@ Updates the history by splitting the input so only individual tags are stored."
                 (cons (kbd "S-<down>")   #'nano-mu4e-next-thread)
                 (cons (kbd "<SPC>")      #'nano-mu4e-mark-as-new)
                 (cons (kbd "<mouse-1>")  #'nano-mu4e-mouse-click)
+                (cons (kbd "C-l")        #'nano-mu4e-rerun)
                 (cons (kbd "p")          #'nano-mu4e-prev-unread-msg)
                 (cons (kbd "n")          #'nano-mu4e-next-unread-msg)
                 (cons (kbd "x")          #'nano-mu4e-mark-execute-all)
