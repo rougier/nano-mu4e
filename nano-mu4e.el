@@ -1341,14 +1341,15 @@ this is the case."
   "Move point to the message with given docid."
   
   (interactive)
-  (goto-char (point-min))
-  (let ((found))
-    (catch 'found
-      (while (nano-mu4e-next-msg)
-        (when (= (nano-mu4e-msg-docid (mu4e-message-at-point)) docid)
-          (setq found t)
-          (throw 'found docid))))
-    found))
+  (when docid
+    (goto-char (point-min))
+    (let ((found))
+      (catch 'found
+        (while (nano-mu4e-next-msg)
+          (when (= (nano-mu4e-msg-docid (mu4e-message-at-point)) docid)
+            (setq found t)
+            (throw 'found docid))))
+      found)))
 
 (defun nano-mu4e-next-msg (&optional _n)
   "Move point to the next unfolded message ('from properties).
