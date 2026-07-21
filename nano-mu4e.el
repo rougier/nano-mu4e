@@ -1,6 +1,6 @@
 ;;; nano-mu4e.el --- NANO mu4e -*- lexical-binding: t -*-
 
-;; Copyright (C) 2025 Nicolas P. Rougier
+;; Copyright (C) 2025-2026 Nicolas P. Rougier
 ;;
 ;; Author: Nicolas P. Rougier <Nicolas.Rougier@inria.fr>
 ;; Homepage: https://github.com/rougier/nano-mu4e
