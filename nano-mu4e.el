@@ -1216,14 +1216,6 @@ then call the default found handler."
         (when hl-line-mode
           (hl-line-highlight))))))
 
-(defun nano-mu4e-search-rerun (&rest _args)
-  "Save the current docid"
-  
-  (let* ((msg (mu4e-message-at-point t))
-         (docid (nano-mu4e-msg-docid msg)))
-    (setq nano-mu4e--message-list nil
-          nano-mu4e--docid docid)))
-
 (defun nano-mu4e-nop (&rest _args)
   "Do nothing")
 
@@ -1701,10 +1693,6 @@ Updates the history by splitting the input so only individual tags are stored."
 
    (advice-add #'mu4e-thread-fold-info
                :override #'nano-mu4e-thread-fold-info)
-   (advice-add #'mu4e-search-rerun
-               :before #'nano-mu4e-search-rerun)
-   (advice-add #'mu4e-search-bookmark
-               :before #'nano-mu4e-search-rerun)
    (advice-add #'mu4e~headers-mark
                :override #'nano-mu4e-nop)
    (advice-add #'mu4e-mark-at-point
@@ -1726,10 +1714,6 @@ Updates the history by splitting the input so only individual tags are stored."
   
   (advice-remove #'mu4e-thread-fold-info
                  #'nano-mu4e-thread-fold-info)
-  (advice-remove #'mu4e-search-rerun
-                 #'nano-mu4e-search-rerun)
-  (advice-remove #'mu4e-search-bookmark
-                 #'nano-mu4e-search-rerun)
   (advice-remove #'mu4e~headers-mark
                  #'nano-mu4e-nop)
   (advice-remove #'mu4e-mark-at-point
