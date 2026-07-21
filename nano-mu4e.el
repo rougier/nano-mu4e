@@ -1238,6 +1238,7 @@ then call the default found handler."
 
   (interactive)
   (mu4e-mark-execute-all t)
+  (sleep-for 0.05)
   (nano-mu4e-refresh))
 
 (defun nano-mu4e-headers-mark-and-next (mark)
@@ -1328,6 +1329,23 @@ this is the case."
   (interactive)
   (when (eobp)
     (nano-mu4e-prev-msg)))
+
+(defun nano-mu4e-goto-msg (docid)
+  "Move point to the message with given docid.
+If found, leave point at the message; otherwise, restore initial point."
+  (interactive)
+  (when docid
+    (let ((point (point))
+          (found nil))
+      (goto-char (point-min))
+      (catch 'found
+        (while (nano-mu4e-next-msg)
+          (when (= (nano-mu4e-msg-docid (mu4e-message-at-point)) docid)
+            (setq found docid)
+            (throw 'found docid))))
+      (unless found
+        (goto-char point))
+      found)))
 
 (defun nano-mu4e-goto-msg (docid)
   "Move point to the message with given docid."
@@ -1546,7 +1564,8 @@ If no such message is found, leave the point unchanged."
   (interactive)
   (when (buffer-live-p (mu4e-get-headers-buffer))
     (with-current-buffer (mu4e-get-headers-buffer)
-      (let* ((msg (mu4e-message-at-point t))
+      (let* ((point (point))
+             (msg (mu4e-message-at-point t))
              (docid (nano-mu4e-msg-docid msg))
              (folded-docids))
 
@@ -1563,7 +1582,7 @@ If no such message is found, leave the point unchanged."
 
         ;; Pass 1: rerun search
         (mu4e-search-rerun)
-        (sleep-for 0.01)
+        (sleep-for 0.10)
 
         ;; Pass 2: apply saved folding state
         (goto-char (point-min))
@@ -1574,7 +1593,9 @@ If no such message is found, leave the point unchanged."
                         (is-folded (memq docid folded-docids)))
                 (mu4e-thread-fold))
             (forward-line 1)))
-        (nano-mu4e-goto-msg docid)
+        (if docid
+            (nano-mu4e-goto-msg docid)
+          (goto-char point))
         (recenter-top-bottom)))))
 
 (defun nano-mu4e-toggle-todo-root (&optional msg)
