@@ -7,15 +7,14 @@ NANO-mu4e is a minor mode for
 [mu4e](https://www.djcbsoftware.nl/code/mu) that offer an alternative
 layout for headers view when threads are enabled.
 
-- Threads are clearly separated
-- Threads are centered on the subject
+- Threads are clearly separated and centered on the subject
 - Tags are shown only on the thread subject line
 - Unread mails are clearly marked
 - New mails can be previewed in headers view
-- Mark is made more salient
+- Marks are made more salient
 - Thread folding is adapted to the style.  
 
-Different styles are available
+**NOTE:** nano-mu4e requires [NERD fonts](https://www.nerdfonts.com/).
 
 ## Simple style
 

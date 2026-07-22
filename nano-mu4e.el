@@ -5,7 +5,7 @@
 ;; Author: Nicolas P. Rougier <Nicolas.Rougier@inria.fr>
 ;; Homepage: https://github.com/rougier/nano-mu4e
 ;; Keywords: mail
-;; Version: 0.1.0
+;; Version: 1.0.0
 ;; Package-Requires: ((emacs "28.1") (mu4e "1.12"))
 
 ;; This file is not part of GNU Emacs.
@@ -26,7 +26,7 @@
 ;;; Commentary:
 ;;
 ;; nano-mu4e is an opinionated headers view for mu4e where threads are
-;; clearly separated using boxex or blank 
+;; clearly separated using boxes or blank lines
 
 ;; Usage example:
 ;;
@@ -35,6 +35,13 @@
 
 ;;; NEWS:
 ;;
+;; Version  1.0.0
+;; - Revamped layout with left margin
+;; - Better synchronization with headers view
+;; - Added tags style
+;; - Folding status is now memorized when rerun or refresh search
+;; - Fix several bugs with recursive navigation
+
 ;; Version  0.1.0
 ;; - First public version
 
@@ -260,11 +267,11 @@ Boxed:
   :type 'func)
 
 (defcustom nano-mu4e-symbols
-  '((github     . ("[!]" . " "))
-    (list       . ("[=]" . " "))
+  '((github     . ("[G]" . " "))
+    (list       . ("[L]" . " "))
     (personal   . ("[P]" . " "))
     (root       . ("[+]" . " "))    
-    (unread     . ("[U]" . " "))
+    (unread     . (" U" . " "))
     (match      . ("[*]" . " "))
     (trash      . ("[T]" . " "))
     (flagged    . ("[F]" . " "))
@@ -1538,10 +1545,11 @@ If no such message is found, leave the point unchanged."
       ;; (not ideal though)
       (sleep-for 0.01)
 
-      (when-let* ((inhibit-read-only t)
-                  (msg (mu4e-message-at-point t))
-                  (docid (nano-mu4e-msg-docid msg))
-                  (messages (nano-mu4e--collect-messages)))
+      (let* ((point (point))
+             (inhibit-read-only t)
+             (msg (mu4e-message-at-point t))
+             (docid (nano-mu4e-msg-docid msg))
+             (messages (nano-mu4e--collect-messages)))
         ;; Pass 1: render headers
         (erase-buffer)
         (nano-mu4e--append messages)
@@ -1556,7 +1564,8 @@ If no such message is found, leave the point unchanged."
             (forward-line 1)))
 
         ;; Move point to saved docid
-        (nano-mu4e-goto-msg docid)))))
+        (unless (nano-mu4e-goto-msg docid)
+          (goto-char point))))))
 
 (defun nano-mu4e-rerun ()
   "Re-run search and ensure folded threads remamin folded."
