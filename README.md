@@ -1,10 +1,11 @@
 
-*NANO mu4e*
+# NANO mu4e
 
-* Introduction
+## Introduction
 
-NANO-mu4e is a minor mode for [[https://www.djcbsoftware.nl/code/mu/][mu4e]] that offer an alternative layout
-for headers view when threads are enabled.
+NANO-mu4e is a minor mode for
+[mu4e](https://www.djcbsoftware.nl/code/mu) that offer an alternative
+layout for headers view when threads are enabled.
 
 - Threads are clearly separated
 - Threads are centered on the subject
@@ -16,9 +17,9 @@ for headers view when threads are enabled.
 
 Different styles are available
 
-** Simple style
+## Simple style
 
-#+begin_src txt
+```text
 [15] Thread subject 1                                               TAG-1 TAG-2
      Initial sender                                                   Yesterday
  --  --------------------------- 12 hidden messages --------------------------- 
@@ -28,12 +29,12 @@ Different styles are available
 
 [ 1] Thread subject 2                                                     TAG-3
      Initial sender                                              Today at 10:32
-#+end_src txt
+```
 
 
-** Regular style
+## Regular style
 
-#+begin_src text
+```text
 [15] Thread subject 1                                               TAG-1 TAG-2
      Initial sender                                                   Yesterday
  --  --------------------------- 12 hidden messages --------------------------- 
@@ -44,12 +45,12 @@ Different styles are available
 [ 1] Thread subject 2                                                     TAG-3
      Initial sender                                              Today at 10:32
 ───────────────────────────────────────────────────────────────────────────────
-#+end_src
+```
 
 
-** Compact style
+## Compact style
 
-#+begin_src text
+```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ [15] Thread subject 1                                           TAG-1 TAG-2 │
 │      Initial sender                                               Yesterday │
@@ -61,12 +62,12 @@ Different styles are available
 │ [ 1] Thread subject 2                                                 TAG-3 │
 │      Initial sender                                          Today at 10:32 │
 └─────────────────────────────────────────────────────────────────────────────┘
-#+end_src
+```
 
 
-** Boxed style
+## Boxed style
 
-#+begin_src text
+```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ [15] Thread subject 1                                      TAG-1 TAG-2 [15] │
 │      Initial sender                                               Yesterday │
@@ -79,22 +80,20 @@ Different styles are available
 │ [ 1] Thread subject 2                                                 TAG-3 │
 │      Initial sender                                          Today at 10:32 │
 └─────────────────────────────────────────────────────────────────────────────┘
-#+end_src
+```
 
 
-* Usage
+# Usage
 
 When in mu4e-headers-mode, you can type:
 
-#+begin_src emacs-lisp
+```emacs-lisp
 (nano-mu4e-mode)
-#+end_src emacs-lisp
+```
 
-* Screenshots
+# Screenshots
 
-#+HTML: <p float="left">
-#+HTML:   <a href="screenshots/1.png"><img src="screenshots/1.png" width="22%" style="border: 1px solid #000000;" /></a>
-#+HTML:   <a href="screenshots/2.png"><img src="screenshots/2.png" width="22%" style="border: 1px solid #000000;" /></a>
-#+HTML:   <a href="screenshots/3.png"><img src="screenshots/3.png" width="22%" style="border: 1px solid #000000;" /></a>
-#+HTML:   <a href="screenshots/4.png"><img src="screenshots/4.png" width="22%" style="border: 1px solid #000000;" /></a>
-#+HTML: </p>
+Using headers view regular style and round tags style.
+
+<a href="nano-mu4e.png"><img align="left" src="output.png" width=100%></img></a>
+
