@@ -1226,7 +1226,7 @@ then call the default found handler."
       (let ((count (or count (length nano-mu4e--message-list))))
         (nano-mu4e--instrument nano-mu4e--message-list)
         (nano-mu4e--append nano-mu4e--message-list)
-        (mu4e~headers-found-handler count)
+        ;; (mu4e~headers-found-handler count)
         (goto-char (point-min))
         (if (and (boundp 'nano-mu4e--docid) nano-mu4e--docid)
             (unless (nano-mu4e-goto-msg nano-mu4e--docid)
@@ -1549,7 +1549,7 @@ If no such message is found, leave the point unchanged."
 
 (defun nano-mu4e-refresh ()
   "Refresh headers view"
-  
+
   (interactive)
   (when (buffer-live-p (mu4e-get-headers-buffer))
     (with-current-buffer (mu4e-get-headers-buffer)
@@ -1615,8 +1615,8 @@ If no such message is found, leave the point unchanged."
                         (is-folded (memq docid folded-docids)))
                 (mu4e-thread-fold))
             (forward-line 1)))
-        (if docid
-            (nano-mu4e-goto-msg docid)
+        (unless (and docid
+                     (nano-mu4e-goto-msg docid))
           (goto-char point))
         (recenter-top-bottom)))))
 
