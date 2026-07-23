@@ -842,75 +842,88 @@ For each thread root message, mark them with:
          (from-github (string= from "notifications@github.com"))
          (from-list (nano-mu4e-msg-is-list msg)))
     (and new (not from-github) (not from-list))))
-  
-(defun nano-mu4e-msg-preview (&optional msg size)
-  "Extract answer from MSG , limiting it to SIZE characters"
 
+
+(defun nano-mu4e-msg-preview (&optional msg size)
+  "Extract a short preview from MSG, limiting it to SIZE characters."
   (interactive)
   (let* ((msg (or msg (mu4e-message-at-point)))
          (size (or size 256))
          (filename (mu4e-message-readable-path msg)))
-    ;; (with-current-buffer (get-buffer-create (format "file-%s" filename))
-    ;;  (insert-file-contents-literally filename))      
     (with-temp-buffer
       (insert-file-contents-literally filename)
-      (let* ((handles (mm-dissect-buffer t))
-             (body "No message body found"))
+      (let* ((handles (mm-dissect-buffer t)))
         (unwind-protect
-            (let* ((handle (if (eq (type-of (car handles)) 'buffer)
-                               handles
-                             (or (mm-find-part-by-type (cdr handles) "text/plain" nil t)
-                                 (mm-find-part-by-type (cdr handles) "text/html" nil t))))
-                   (media-type (mm-handle-media-type handle))
-                   (type       (mm-handle-type handle))
-                   (charset    (mail-content-type-get type 'charset))
-                   (buffer     (mm-handle-buffer handle))
-                   (content    (mm-get-part handle)))
-              (setq body (cond ((string= media-type "text/plain")
-                                (with-temp-buffer
-                                  (insert (mm-decode-string content charset))
-                                  (nano-mu4e-preview--answer size)))
-                               ((string= media-type "text/html")
-                                (with-temp-buffer
-                                  (insert (mm-decode-string content charset))
-                                  (shr-render-region (point-min) (point-max))
-                                  (nano-mu4e-preview--answer)))
-                               (t "No message body found"))))
-              (mm-destroy-parts handles))
-          body))))
+            (when-let* ((handle (if (bufferp (car handles))
+                                    handles
+                                  (or (mm-find-part-by-type (cdr handles) "text/plain" nil t)
+                                      (mm-find-part-by-type (cdr handles) "text/html" nil t))))
+                        (media-type (and handle (mm-handle-media-type handle)))
+                        (type       (and handle (mm-handle-type handle)))
+                        (charset    (and type (mail-content-type-get type 'charset)))
+                        (content    (and handle (mm-get-part handle))))
+              (cond ((null handle) "No message body found")
+                    ((string= media-type "text/plain")
+                     (with-temp-buffer
+                       (insert (mm-decode-string content charset))
+                       (nano-mu4e-preview--process size)))
+                    ((string= media-type "text/html")
+                     (with-temp-buffer
+                       (insert (mm-decode-string content charset))
+                       (shr-render-region (point-min) (point-max))
+                       (nano-mu4e-preview--process size)))
+                    (t "No message body found")))
+          (mm-destroy-parts handles))))))
 
-(defun nano-mu4e-preview--answer (&optional size)
-  "Return actual answer in current buffer, limiting it to SIZE characters."
-
-  (interactive)
+(defun nano-mu4e-preview--process (&optional size)
+  "Return a cleaned preview of the body in the current buffer, limited to SIZE characters."
   (let* ((size (or size 256))
          (greetings '("Hello" "Hi" "Dear"
                       "Bonjour" "Coucou" "Salut"
                       "Chers" "Cher" "Chère" "Très chers"))
-         (greetings-re (concat
-                        "^[\t ]*\\("
-                        (mapconcat #'identity greetings "\\|")
-                        "\\)")))
-    ;; Go to message body
-    (message-goto-body)
-    ;; Go to greetings (if any)
-    (re-search-forward greetings-re nil t)
-
-    ;; We should skip citations here
-    (while (and (not (eobp))       ; not at end of buffer
-                (looking-at "^>")) ; line starts with '>'
+         (greetings-re (concat "^[\t ]*\\(" (mapconcat #'identity greetings "\\|") "\\)"))
+         ;; "On ... wrote:" / "Le ... a écrit :" style attribution lines
+         (attribution-re "^[\t ]*\\(On .* wrote:\\|Le .* a écrit *:\\)[\t ]*$")
+         ;; Hard delimiters introducing a quoted original message
+         (quote-marker-re (concat
+                            "^[\t ]*\\("
+                            "-\\{2,\\} ?Mail original ?-\\{2,\\}"
+                            "\\|-\\{2,\\} ?Original Message ?-\\{2,\\}"
+                            "\\|-\\{2,\\} ?Message d'origine ?-\\{2,\\}"
+                            "\\|-\\{2,\\} ?Forwarded [Mm]essage ?-\\{2,\\}"
+                            "\\)"))
+         (signature-re "^-- ?$")
+         lines)
+    (goto-char (point-min))
+    ;; Skip an initial greeting line, if present, so it doesn't clutter the preview
+    (when (re-search-forward greetings-re nil t)
       (forward-line 1))
-
-    ;; Go to first sentence starting with a letter
-    (re-search-forward "^[A-Za-z]+" nil t)
-    (beginning-of-line)
-    (let* ((answer (buffer-substring-no-properties
-                    (point) (min (+ (point) size) (point-max))))
-           (answer (string-trim-left answer))
-           (answer (replace-regexp-in-string "\n" " " answer))
-           (answer (replace-regexp-in-string "  " " " answer)))
-      answer)))
-
+    ;; Walk the buffer line by line, dropping quotes/attributions/blank runs,
+    ;; and stopping at a signature block, quote marker, or once we have enough content.
+    (while (and (not (eobp))
+                (< (length (mapconcat #'identity (reverse lines) " ")) size))
+      (let ((line (buffer-substring-no-properties
+                   (line-beginning-position) (line-end-position))))
+        (cond
+         ;; Signature or quote-marker delimiter: stop entirely
+         ((or (string-match-p signature-re line)
+              (string-match-p quote-marker-re line))
+          (goto-char (point-max)))
+         ;; Quoted line or reply attribution: skip
+         ((or (string-match-p "^[\t ]*>" line)
+              (string-match-p attribution-re line)))
+         ;; Blank line: skip without adding
+         ((string-match-p "^[\t ]*$" line))
+         (t (push line lines))))
+      (forward-line 1))
+    (let* ((summary (mapconcat #'identity (reverse lines) " "))
+           (summary (string-trim summary))
+           (summary (replace-regexp-in-string "[ \t]+" " " summary)))
+      (if (> (length summary) size)
+          (concat (string-trim-right
+                   (substring summary 0 (or (string-match " [^ ]*$" summary 0 size) size)))
+                  "…")
+        summary))))
 
 ;;; Rendering
 ;;; ------------------------------------------------------------------------
