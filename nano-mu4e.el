@@ -1144,21 +1144,27 @@ This is suitable for displaying in the header view."
                                              'nano-mu4e-date t)
         " "
         (propertize (nano-mu4e-message-symbol msg) 'nano-mu4e-mark t)))
-      (when (and nano-mu4e-msg-preview
-                 nano-mu4e-msg-preview-func
-                 (funcall nano-mu4e-msg-preview-func msg))
-         (propertize
-          (concat (propertize " " 'display "\n" 'face 'nano-mu4e-preview)
-                  (if (and mu4e-search-threads
-                           (memq nano-mu4e-view-style '(boxed compact)))
-                      (nano-mu4e-fill
-                          (propertize (nano-mu4e-msg-preview msg) 'face 'nano-mu4e-preview)
+      
+      (when-let* (((and nano-mu4e-msg-preview
+                        (functionp nano-mu4e-msg-preview-func)
+                        (funcall nano-mu4e-msg-preview-func msg)))
+                  (preview (nano-mu4e-msg-preview msg))
+                  ((and (stringp preview)
+                        (length> preview 0))))
+            (propertize
+             (concat (propertize " " 'display "\n" 'face 'nano-mu4e-preview)
+                     (if (and mu4e-search-threads
+                              (memq nano-mu4e-view-style '(boxed compact)))
+                         (nano-mu4e-fill
+                          (propertize preview 'face 'nano-mu4e-preview)
                           (- width 12)
-                          (concat (propertize "│    " 'face 'nano-mu4e-border)
-                                  (propertize "┊ "    'face 'nano-mu4e-preview))
+                          (concat
+                           (propertize "│ " 'face 'nano-mu4e-border)
+                           (propertize "    " 'face 'nano-mu4e-gutter-body)
+                           (propertize " ┊ "    'face 'nano-mu4e-preview))
                           (propertize "│"  'face 'nano-mu4e-border))
                     (nano-mu4e-fill
-                     (propertize (nano-mu4e-msg-preview msg)  'face 'nano-mu4e-preview)
+                     (propertize preview  'face 'nano-mu4e-preview)
                      (- width 10)
                      (concat
                       (propertize "    " 'face 'nano-mu4e-gutter-body)
