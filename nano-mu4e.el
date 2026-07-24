@@ -1373,20 +1373,6 @@ If found, leave point at the message; otherwise, restore initial point."
         (goto-char point))
       found)))
 
-(defun nano-mu4e-goto-msg (docid)
-  "Move point to the message with given docid."
-  
-  (interactive)
-  (when docid
-    (goto-char (point-min))
-    (let ((found))
-      (catch 'found
-        (while (nano-mu4e-next-msg)
-          (when (= (nano-mu4e-msg-docid (mu4e-message-at-point)) docid)
-            (setq found t)
-            (throw 'found docid))))
-      found)))
-
 (defun nano-mu4e-next-msg (&optional _n)
   "Move point to the next unfolded message ('from properties).
 If no such message is found, leave the point unchanged."
@@ -1470,17 +1456,6 @@ If no such message is found, leave the point unchanged."
         (goto-char found)
       (message "No previous unread message"))
     found))
-
-(defun nano-mu4e-prev-unread-msg (&optional _n)
-  "Move point to the previous message ('from properties)"
-  
-  (interactive)
-  (when-let ((prop-match (text-property-search-backward 'from t t t)))
-    (goto-char (prop-match-beginning prop-match))
-    (if (or (not (nano-mu4e-msg-is-unread (mu4e-message-at-point)))
-            (get-char-property (point) 'mu4e-thread-folded))
-        (nano-mu4e-prev-unread-msg)
-      (point))))
 
 (defun nano-mu4e-next-thread ()
   "Move point to the next thread ('root properties)"
