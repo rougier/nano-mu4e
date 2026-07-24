@@ -1170,7 +1170,7 @@ This is suitable for displaying in the header view."
              (when (not  mu4e-search-threads)
                (concat " — "
                        (propertize (nano-mu4e-msg-subject msg) 'face face)))
-             (if (and (> (length tags) 0) (not is-root))
+             (if (and (stringp tags) (length> tags 0) (not is-root))
                  (format " (%s)" tags)
                "")
              )
@@ -1229,7 +1229,7 @@ handler."
         (setq-local nano-mu4e--message-list
                     (append nano-mu4e--message-list msglst))))))
 
-(defun nano-mu4e--append (msglst)
+(defun nano-mu4e--populate (msglst)
   "Populate the headers buffer with MSGLIST"
   
   (when (buffer-live-p (mu4e-get-headers-buffer))
@@ -1268,7 +1268,7 @@ then call the default found handler."
     (with-current-buffer (mu4e-get-headers-buffer)
       (let ((count (or count (length nano-mu4e--message-list))))
         (nano-mu4e--instrument nano-mu4e--message-list)
-        (nano-mu4e--append nano-mu4e--message-list)
+        (nano-mu4e--populate nano-mu4e--message-list)
         ;; (mu4e~headers-found-handler count)
         (goto-char (point-min))
         (if (and (boundp 'nano-mu4e--docid) nano-mu4e--docid)
