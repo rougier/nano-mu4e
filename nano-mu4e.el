@@ -462,7 +462,7 @@ When clicked, a new SEARCH is initiated."
          (face (cond (is-todo   'nano-mu4e-todo)
                      (is-active 'nano-mu4e-tag-active)
                      (t         'nano-mu4e-tag-inactive)))
-         (tag (cond
+         (decorated-tag (cond
                ((eq style 'round)
                 (concat (propertize "" 'face `(:inherit ,face))
                         (propertize tag 'face `(:inherit ,face :inverse-video t))
@@ -473,10 +473,10 @@ When clicked, a new SEARCH is initiated."
                         (propertize "▕" 'face `(:inherit ,face :inverse-video t))))
                (t
                 (concat (propertize tag 'face `(:inherit ,face)))))))
-      (nano-mu4e-make-button tag
-                         (format "tag:%s" tag)
-                         (format "Search for tag %s" tag)
-                         '(:weight bold))))
+      (nano-mu4e-make-button decorated-tag
+                             (format "tag:%s" tag)
+                             (format "Search for tag %s" tag)
+                             '(:weight bold))))
 
 (defun nano-mu4e-msg-tags (msg)
     "Return a string of tags from MSG."
