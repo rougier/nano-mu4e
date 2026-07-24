@@ -41,6 +41,8 @@
 ;; - Added tags style
 ;; - Folding status is now memorized when rerun or refresh search
 ;; - Fix several bugs with recursive navigation
+;; - Fix bug with deprecated variable mu4e-threads-mode
+;; - Rendering optimization
 
 ;; Version  0.1.0
 ;; - First public version
@@ -1301,8 +1303,11 @@ then call the default found handler."
 
   (interactive)
   (mu4e-mark-execute-all t)
-  (sleep-for 0.05)
-  (nano-mu4e-refresh))
+  ;; mu4e-mark-execute is asynchronous and we have no way to know when
+  ;; it is executed. This micro-sleep handles most commands but it is
+  ;; far from ideal.
+  (run-at-time 0.05 nil #'nano-mu4e-refresh))
+
 
 (defun nano-mu4e-headers-mark-and-next (mark)
   "Set MARK on the message at point or in region.
@@ -1571,11 +1576,6 @@ If no such message is found, leave the point unchanged."
   (interactive)
   (when (buffer-live-p (mu4e-get-headers-buffer))
     (with-current-buffer (mu4e-get-headers-buffer)
-
-      ;; Some temporisation is needed if some execution is in progress
-      ;; (not ideal though)
-      (sleep-for 0.01)
-
       (let* ((point (point))
              (inhibit-read-only t)
              (msg (mu4e-message-at-point t))
@@ -1583,7 +1583,7 @@ If no such message is found, leave the point unchanged."
              (messages (nano-mu4e--collect-messages)))
         ;; Pass 1: render headers
         (erase-buffer)
-        (nano-mu4e--append messages)
+        (nano-mu4e--populate messages)
         
         ;; Pass 2: apply saved folding state
         (goto-char (point-min))
@@ -1622,7 +1622,9 @@ If no such message is found, leave the point unchanged."
 
         ;; Pass 1: rerun search
         (mu4e-search-rerun)
-        (sleep-for 0.01)
+
+        ;; Without this microsleep, folding does not work
+        (sleep-for 0.05)
 
         ;; Pass 2: apply saved folding state
         (goto-char (point-min))
