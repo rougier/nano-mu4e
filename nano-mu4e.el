@@ -1145,12 +1145,12 @@ This is suitable for displaying in the header view."
         " "
         (propertize (nano-mu4e-message-symbol msg) 'nano-mu4e-mark t)))
       
-      (when-let* (((and nano-mu4e-msg-preview
-                        (functionp nano-mu4e-msg-preview-func)
-                        (funcall nano-mu4e-msg-preview-func msg)))
-                  (preview (nano-mu4e-msg-preview msg))
-                  ((and (stringp preview)
-                        (length> preview 0))))
+      (when (and nano-mu4e-msg-preview
+                 (functionp nano-mu4e-msg-preview-func)
+                 (funcall nano-mu4e-msg-preview-func msg))
+        (when-let* ((preview (nano-mu4e-msg-preview msg))
+                    ((stringp preview))
+                    ((length> preview 0)))
             (propertize
              (concat (propertize " " 'display "\n" 'face 'nano-mu4e-preview)
                      (if (and mu4e-search-threads
@@ -1169,7 +1169,7 @@ This is suitable for displaying in the header view."
                      (concat
                       (propertize "    " 'face 'nano-mu4e-gutter-body)
                       (propertize " ┊ " 'face 'nano-mu4e-preview))
-                     ""))))))
+                     "")))))))
       'msg msg)))
 
 
@@ -1575,7 +1575,7 @@ If no such message is found, leave the point unchanged."
         
         ;; Pass 2: apply saved folding state
         (goto-char (point-min))
-        (when mu4e-thread-mode
+        (when mu4e-search-threads
           (while (not (eobp))
             (when-let* ((msg (mu4e-message-at-point t))
                         (folded (plist-get msg :folded)))
@@ -1595,14 +1595,14 @@ If no such message is found, leave the point unchanged."
       (let* ((point (point))
              (msg (mu4e-message-at-point t))
              (docid (nano-mu4e-msg-docid msg))
-             (folded-docids))
+             (folded-docids nil))
 
         ;; Collect folded docids
-        (when mu4e-thread-mode
+        (when mu4e-search-threads
           (goto-char (point-min))
           (while (not (eobp))
-            (when-let ((msg (mu4e-message-at-point t))
-                       (docid (nano-mu4e-msg-docid msg)))
+            (when-let* ((msg (mu4e-message-at-point t))
+                        (docid (nano-mu4e-msg-docid msg)))
               (if (and (nano-mu4e-msg-is-thread-root msg)
                        (mu4e-thread-is-folded))
                   (push docid folded-docids)))
@@ -1610,11 +1610,11 @@ If no such message is found, leave the point unchanged."
 
         ;; Pass 1: rerun search
         (mu4e-search-rerun)
-        (sleep-for 0.10)
+        (sleep-for 0.01)
 
         ;; Pass 2: apply saved folding state
         (goto-char (point-min))
-        (when mu4e-thread-mode
+        (when mu4e-search-threads
           (while (not (eobp))
             (when-let* ((msg (mu4e-message-at-point t))
                         (docid (nano-mu4e-msg-docid msg))
