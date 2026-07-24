@@ -1455,17 +1455,17 @@ If no such message is found, leave the point unchanged."
 If no such message is found, leave the point unchanged."
 
   (interactive)
-  (let (found
-        (save-excursion
-          (catch 'found
-            (while t
-              (if-let ((prop-match (text-property-search-forward 'from t t t)))
-                  (progn
-                    (goto-char (prop-match-beginning prop-match))
-                    (when (and (nano-mu4e-msg-is-unread (mu4e-message-at-point))
-                               (not (get-char-property (point) 'mu4e-thread-folded)))
-                      (throw 'found (point))))
-                (throw 'found nil))))))
+  (let ((found
+         (save-excursion
+           (catch 'found
+             (while t
+               (if-let ((prop-match (text-property-search-forward 'from t t t)))
+                   (progn
+                     (goto-char (prop-match-beginning prop-match))
+                     (when (and (nano-mu4e-msg-is-unread (mu4e-message-at-point))
+                                (not (get-char-property (point) 'mu4e-thread-folded)))
+                       (throw 'found (point))))
+                 (throw 'found nil)))))))
     (if found
         (goto-char found)
       (message "No next unread message"))
@@ -1770,7 +1770,7 @@ Updates the history by splitting the input so only individual tags are stored."
                               (:mailing-list . 10)
                               (:from . 22)
                               (:subject))
-        mu4e--mark-fringe "")
+        mu4e--mark-fringe (make-string mu4e--mark-fringe-len ?\s))
   (setq mu4e-marks (copy-tree nano-mu4e--saved-marks))
   
   (advice-remove #'mu4e-thread-fold-info
