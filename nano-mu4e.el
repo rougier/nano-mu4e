@@ -320,16 +320,27 @@ be done with a display property or spaces depending on USE-SPACE."
                                 `(space :align-to (- right ,(length right) 1))))))
     (concat left padding right)))
 
+(defvar nano-mu4e--fill-buffer nil
+  "Hidden scratch buffer reused by `nano-mu4e-fill'.
+Avoids repeatedly creating and killing a temp buffer (via
+`with-temp-buffer') for every previewed message.")
+
+(defun nano-mu4e--fill-buffer ()
+  "Return the live scratch buffer used by `nano-mu4e-fill', creating it if needed."
+  (unless (buffer-live-p nano-mu4e--fill-buffer)
+    (setq nano-mu4e--fill-buffer (generate-new-buffer " *nano-mu4e-fill*" t)))
+  nano-mu4e--fill-buffer)
+
 (defun nano-mu4e-fill (text &optional width prefix suffix) 
   "Refill TEXT to given WIDTH (characters) using PREFIX for each line."
-  
-  (with-temp-buffer
+
+  (with-current-buffer (nano-mu4e--fill-buffer)
+    (erase-buffer)
     (let* ((suffix (or suffix ""))
            (prefix (or prefix ""))
            (fill-column (or width (- (window-width) 1 (length prefix)))))
       (insert text)
       (fill-paragraph)
-
       (concat
        prefix
        (string-replace "\n"
@@ -339,30 +350,39 @@ be done with a display property or spaces depending on USE-SPACE."
        (propertize " " 'display `(space :align-to (- right 2)))
        suffix))))
 
+(defvar nano-mu4e--button-keymap
+  (define-keymap
+    "<mouse-2>"               #'push-button
+    "<mode-line> <mouse-2>"   #'push-button
+    "<header-line> <mouse-2>" #'push-button)
+  "Shared keymap for nano-mu4e buttons.")
+
 (defun nano-mu4e-make-button (text search help &optional mouse-face)
   "Create a clickable button displaying TEXT and HELP.
 When clicked, a new SEARCH is initiated."
 
-  (let* ((keymap (define-keymap
-                   "<mouse-2>" #'push-button
-                   "<mode-line> <mouse-2>" #'push-button
-                   "<header-line> <mouse-2>" #'push-button)))
     (propertize text
                 'pointer 'hand
-;;                'mouse-face (or mouse-face 'bold)
-;;                'help-echo help
                 'button t
                 'follow-link t
                 'category t
                 'button-data search
-                'keymap keymap
-                'action #'mu4e-search)))
+                'keymap nano-mu4e--button-keymap
+                'action #'mu4e-search))
+
+(defconst nano-mu4e--emoji-regex
+  (concat "["
+          "\U0001f300-\U0001f9ff"
+          "\U0001f1e0-\U0001f1ff"
+          "\U00002000-\U00002bff"
+          "\U0000fe00-\U0000fe0f"
+          "]")
+  "Regex matching decorative symbols, flags, and modern emojis.")
 
 (defun nano-mu4e-sanitize-string (str)
   "Clean emojis from STR. Targets decorative symbols, flags, and modern emojis."
   (when (stringp str)
-    (let* ((emoji-regex "[\U0001f300-\U0001f9ff\U0001f1e0-\U0001f1ff\U00002000-\U00002bff\U0000fe00-\U0000fe0f]")
-           (no-emojis (replace-regexp-in-string emoji-regex "" str))
+    (let* ((no-emojis (replace-regexp-in-string nano-mu4e--emoji-regex "" str))
            (cleaned (string-trim (replace-regexp-in-string "  +" " " no-emojis))))
       cleaned)))
 
@@ -875,24 +895,39 @@ For each thread root message, mark them with:
                     (t "No message body found")))
           (mm-destroy-parts handles))))))
 
+(defconst nano-mu4e--preview-greetings-re
+  (concat "^[\t ]*\\("
+          (mapconcat #'identity
+                     '("Hello" "Hi" "Dear"
+                       "Bonjour" "Coucou" "Salut"
+                       "Chers" "Cher" "Chère" "Très chers")
+                     "\\|")
+          "\\)")
+  "Regex matching an initial greeting line to skip in message previews.")
+
+(defconst nano-mu4e--preview-attribution-re
+  "^[\t ]*\\(On .* wrote:\\|Le .* a écrit *:\\)[\t ]*$"
+  "Regex matching \"On ... wrote:\" / \"Le ... a écrit :\" attribution lines.")
+
+(defconst nano-mu4e--preview-quote-marker-re
+  (concat "^[\t ]*\\("
+          "-\\{2,\\} ?Mail original ?-\\{2,\\}"
+          "\\|-\\{2,\\} ?Original Message ?-\\{2,\\}"
+          "\\|-\\{2,\\} ?Message d'origine ?-\\{2,\\}"
+          "\\|-\\{2,\\} ?Forwarded [Mm]essage ?-\\{2,\\}"
+          "\\)")
+  "Regex matching hard delimiters introducing a quoted original message.")
+
+(defconst nano-mu4e--preview-signature-re "^-- ?$"
+  "Regex matching a signature delimiter line.")
+
 (defun nano-mu4e-preview--process (&optional size)
   "Return a cleaned preview of the body in the current buffer, limited to SIZE characters."
   (let* ((size (or size 256))
-         (greetings '("Hello" "Hi" "Dear"
-                      "Bonjour" "Coucou" "Salut"
-                      "Chers" "Cher" "Chère" "Très chers"))
-         (greetings-re (concat "^[\t ]*\\(" (mapconcat #'identity greetings "\\|") "\\)"))
-         ;; "On ... wrote:" / "Le ... a écrit :" style attribution lines
-         (attribution-re "^[\t ]*\\(On .* wrote:\\|Le .* a écrit *:\\)[\t ]*$")
-         ;; Hard delimiters introducing a quoted original message
-         (quote-marker-re (concat
-                            "^[\t ]*\\("
-                            "-\\{2,\\} ?Mail original ?-\\{2,\\}"
-                            "\\|-\\{2,\\} ?Original Message ?-\\{2,\\}"
-                            "\\|-\\{2,\\} ?Message d'origine ?-\\{2,\\}"
-                            "\\|-\\{2,\\} ?Forwarded [Mm]essage ?-\\{2,\\}"
-                            "\\)"))
-         (signature-re "^-- ?$")
+         (greetings-re nano-mu4e--preview-greetings-re)
+         (attribution-re nano-mu4e--preview-attribution-re)
+         (quote-marker-re nano-mu4e--preview-quote-marker-re)
+         (signature-re nano-mu4e--preview-signature-re)
          lines)
     (goto-char (point-min))
     ;; Skip an initial greeting line, if present, so it doesn't clutter the preview
@@ -1081,19 +1116,19 @@ relies on the NERD font."
 This is suitable for displaying in the header view."
 
   (let* ((width (window-width))
-         (tags-list (mu4e-message-field msg :tags))
-         (tags (mapconcat #'identity tags-list ","))
          (is-root (nano-mu4e-msg-is-thread-root msg))
-         (face  (cond ((nano-mu4e-msg-is-new msg)            'nano-mu4e-new)
-                      ((nano-mu4e-msg-is-unread msg)         'nano-mu4e-unread)
-                      ((not (nano-mu4e-msg-is-related msg))  'default)
-                      ((nano-mu4e-msg-is-archived msg)       'nano-mu4e-archived)
-                      ((nano-mu4e-msg-is-sent msg)           'nano-mu4e-sent)
-                      ((nano-mu4e-msg-is-related  msg)       'nano-mu4e-related)
-                      ((and (nano-mu4e-msg-is-unread msg)
-                            (nano-mu4e-msg-is-archived msg)) '(nano-mu4e-unread
-                                                               nano-mu4e-archived))
-                      (t                                     'default))))
+         (tags (unless is-root
+                 (mapconcat #'identity (mu4e-message-field msg :tags) ",")))
+         (face (cond ((nano-mu4e-msg-is-new msg)            'nano-mu4e-new)
+                     ((nano-mu4e-msg-is-unread msg)         'nano-mu4e-unread)
+                     ((not (nano-mu4e-msg-is-related msg))  'default)
+                     ((nano-mu4e-msg-is-archived msg)       'nano-mu4e-archived)
+                     ((nano-mu4e-msg-is-sent msg)           'nano-mu4e-sent)
+                     ((nano-mu4e-msg-is-related  msg)       'nano-mu4e-related)
+                     ((and (nano-mu4e-msg-is-unread msg)
+                           (nano-mu4e-msg-is-archived msg)) '(nano-mu4e-unread
+                                                              nano-mu4e-archived))
+                     (t                                     'default))))
     (propertize
      (concat
       (mu4e~headers-docid-cookie (nano-mu4e-msg-docid msg))             
@@ -1204,6 +1239,8 @@ handler."
                   #'nano-mu4e-headers-hl-line-range)
       (save-excursion
         (let ((inhibit-read-only t)
+              (gc-cons-threshold (max gc-cons-threshold (* 64 1024 1024)))
+              (gc-cons-percentage 0.6)
               (index 1))
           (goto-char (point-max))
           (seq-do
