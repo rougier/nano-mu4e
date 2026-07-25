@@ -94,5 +94,6 @@ When in mu4e-headers-mode, you can type:
 
 Using headers view regular style and round tags style.
 
-<a href="nano-mu4e.png"><img align="left" src="output.png" width=100%></img></a>
+[![](./nano-mu4e.png)](./nano-mu4e.png)
+
 
