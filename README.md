@@ -33,6 +33,8 @@ layout for headers view when threads are enabled.
 
 ## Regular style
 
+Same as the simple style, plus a full-width rule after each thread.
+
 ```text
 [15] Thread subject 1                                               TAG-1 TAG-2
      Initial sender                                                   Yesterday

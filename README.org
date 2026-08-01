@@ -33,6 +33,8 @@ Different styles are available
 
 ** Regular style
 
+Same as the simple style, plus a full-width rule after each thread.
+
 #+begin_src text
 [15] Thread subject 1                                               TAG-1 TAG-2
      Initial sender                                                   Yesterday
