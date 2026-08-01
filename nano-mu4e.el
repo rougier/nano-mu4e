@@ -883,7 +883,7 @@ For each thread root message, mark them with:
                         (media-type (and handle (mm-handle-media-type handle)))
                         (type       (and handle (mm-handle-type handle)))
                         (charset    (or (and type (mail-content-type-get type 'charset))
-                                        'us-ascii))
+                                        "us-ascii"))
                         (content    (and handle (mm-get-part handle))))
               (cond ((null handle) "No message body found")
                     ((string= media-type "text/plain")
