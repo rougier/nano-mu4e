@@ -18,7 +18,7 @@ Different styles are available
 
 ** Simple style
 
-#+begin_src txt
+#+begin_src text
 [15] Thread subject 1                                               TAG-1 TAG-2
      Initial sender                                                   Yesterday
  --  --------------------------- 12 hidden messages --------------------------- 
@@ -28,10 +28,12 @@ Different styles are available
 
 [ 1] Thread subject 2                                                     TAG-3
      Initial sender                                              Today at 10:32
-#+end_src txt
+#+end_src
 
 
 ** Regular style
+
+Same as the simple style, plus a full-width rule after each thread.
 
 #+begin_src text
 [15] Thread subject 1                                               TAG-1 TAG-2
@@ -68,7 +70,7 @@ Different styles are available
 
 #+begin_src text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ [15] Thread subject 1                                      TAG-1 TAG-2 [15] │
+│ [15] Thread subject 1                                           TAG-1 TAG-2 │
 │      Initial sender                                               Yesterday │
 │  --  ------------------------- 12 hidden messages ------------------------- │
 │      Recipient 1                                             Today at 10:21 │
