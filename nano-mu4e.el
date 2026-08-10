@@ -1713,11 +1713,6 @@ using individual tags from `nano-mu4e-tags-history' as candidates.
 Updates the history by splitting the input so only individual tags are stored."
   (interactive)
   (let* ((msg (or msg (mu4e-message-at-point)))
-         (msg (if (nano-mu4e-msg-is-thread-root msg)
-                  msg
-                (progn
-                  (nano-mu4e-prev-thread)
-                  (mu4e-message-at-point))))
          (docid (plist-get msg :docid))
          (tags (mu4e-message-field msg :tags))
          (tags (completing-read-multiple
@@ -1731,7 +1726,6 @@ Updates the history by splitting the input so only individual tags are stored."
     (when docid
       (mu4e-mark-set 'tag input)
       (nano-mu4e-mark-execute-all t)
-      (nano-mu4e-refresh)
       (nano-mu4e-goto-msg docid)
 
       ;; Add new tags to tags history
