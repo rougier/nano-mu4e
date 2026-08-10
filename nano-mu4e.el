@@ -174,6 +174,11 @@
   "Face for gutter"
   :group 'nano-mu4e-faces)
 
+(defface nano-mu4e-gutter-preview
+  `((t :inherit (shadow widget-field)))
+  "Face for gutter preview"
+  :group 'nano-mu4e-faces)
+
 (defface nano-mu4e-gutter-mark
   `((t :inherit (error bold)
        :inverse-video t))
@@ -750,15 +755,16 @@ When clicked, a new SEARCH is initiated."
   ;; Could be probably simplified in order to try to avoid calling
   ;; mu4e~headers-thread-prefix which is internal
   (let* ((meta (plist-get msg :meta))
-         (mu4e-headers-thread-root-prefix          '(""   . ""))
-         (mu4e-headers-thread-first-child-prefix   '(""   . ""))
-         (mu4e-headers-thread-child-prefix         '(""   . ""))
-         (mu4e-headers-thread-last-child-prefix    '(""   . ""))
+         (mu4e-headers-thread-root-prefix          '(" │" . " │"))
+         (mu4e-headers-thread-first-child-prefix   '(" │" . " │"))
+         (mu4e-headers-thread-child-prefix         '(" │" . " │"))
          (mu4e-headers-thread-connection-prefix    '(" │" . " │"))
-         (mu4e-headers-thread-blank-prefix         '(""   . ""))
-         (mu4e-headers-thread-orphan-prefix        '(""   . ""))
-         (mu4e-headers-thread-single-orphan-prefix '(""   . ""))
-         (mu4e-headers-thread-duplicate-prefix     '(""  . ""))
+         (mu4e-headers-thread-last-child-prefix    '(" │" . " │"))
+
+         (mu4e-headers-thread-blank-prefix         '("" . ""))
+         (mu4e-headers-thread-orphan-prefix        '("" . ""))
+         (mu4e-headers-thread-single-orphan-prefix '("" . ""))
+         (mu4e-headers-thread-duplicate-prefix     '(""   . ""))
          (thread-prefix (mu4e~headers-thread-prefix meta)))
     thread-prefix))
 
@@ -1115,12 +1121,17 @@ relies on the NERD font."
 
 (defun nano-mu4e-message-line (msg)
   "Return a propertized description of MSG.
-This is suitable for displaying in the header view."
+This is suitable for displaying in the headers view."
 
   (let* ((width (window-width))
          (is-root (nano-mu4e-msg-is-thread-root msg))
          (tags (unless is-root
                  (mapconcat #'identity (mu4e-message-field msg :tags) ",")))
+         (thread-prefix (or (nano-mu4e-thread-prefix msg) ""))
+         (preview-size (if (and mu4e-search-threads
+                                (memq nano-mu4e-view-style '(boxed compact)))
+                           (- width 12 (length thread-prefix))
+                        (- width 10 (length thread-prefix))))
          (face (cond ((nano-mu4e-msg-is-new msg)            'nano-mu4e-new)
                      ((nano-mu4e-msg-is-unread msg)         'nano-mu4e-unread)
                      ((not (nano-mu4e-msg-is-related msg))  'default)
@@ -1142,7 +1153,7 @@ This is suitable for displaying in the header view."
                (propertize (format " %s " (nano-mu4e-symbol 'match))
                            'face 'nano-mu4e-gutter-match
                            'nano-mu4e-mark t))
-             (propertize (nano-mu4e-thread-prefix msg) 'face 'shadow)
+             (propertize thread-prefix 'face 'shadow)
              (propertize " " 'face face)
              (cond ((nano-mu4e-msg-is-encrypted msg)
                     (concat 
@@ -1183,6 +1194,7 @@ This is suitable for displaying in the header view."
         (propertize (nano-mu4e-message-symbol msg) 'nano-mu4e-mark t)))
       
       (when (and nano-mu4e-msg-preview
+                 (> preview-size 24)
                  (functionp nano-mu4e-msg-preview-func)
                  (funcall nano-mu4e-msg-preview-func msg))
         (when-let* ((preview (nano-mu4e-msg-preview msg))
@@ -1194,18 +1206,24 @@ This is suitable for displaying in the header view."
                               (memq nano-mu4e-view-style '(boxed compact)))
                          (nano-mu4e-fill
                           (propertize preview 'face 'nano-mu4e-preview)
-                          (- width 12)
+                          preview-size
                           (concat
                            (propertize "│ " 'face 'nano-mu4e-border)
-                           (propertize "    " 'face 'nano-mu4e-gutter-body)
-                           (propertize " ┊ "    'face 'nano-mu4e-preview))
+                           (propertize "    " 'face 'nano-mu4e-gutter-preview)
+                           (propertize " " 'face 'nano-mu4e-preview)
+                           (propertize "┊ "  'face 'nano-mu4e-preview)
+                           (propertize (make-string (length thread-prefix) ? )
+                                       'face 'nano-mu4e-preview))
                           (propertize "│"  'face 'nano-mu4e-border))
-                    (nano-mu4e-fill
+                     (nano-mu4e-fill
                      (propertize preview  'face 'nano-mu4e-preview)
-                     (- width 10)
+                     preview-size
                      (concat
-                      (propertize "    " 'face 'nano-mu4e-gutter-body)
-                      (propertize " ┊ " 'face 'nano-mu4e-preview))
+                      (propertize "    " 'face 'nano-mu4e-gutter-preview)
+                      (propertize " " 'face 'nano-mu4e-preview)
+                      (propertize (make-string (length thread-prefix) ? )
+                                  'face 'nano-mu4e-preview)
+                      (propertize "┊ " 'face 'nano-mu4e-preview))
                      "")))))))
       'msg msg)))
 
