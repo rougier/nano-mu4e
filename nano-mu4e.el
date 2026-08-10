@@ -34,6 +34,10 @@
 ;; (nano-mu4e-mode)
 
 ;;; NEWS:
+
+;; Version  1.0.1
+;; - Fix typos in README.md
+;; - Fix preview alignemnt
 ;;
 ;; Version  1.0.0
 ;; - Revamped layout with left margin
