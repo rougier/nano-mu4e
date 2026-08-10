@@ -1324,8 +1324,7 @@ then call the default found handler."
   ;; mu4e-mark-execute is asynchronous and we have no way to know when
   ;; it is executed. This micro-sleep handles most commands but it is
   ;; far from ideal.
-  (run-at-time 0.05 nil #'nano-mu4e-refresh))
-
+  (run-at-time 0.1 nil #'nano-mu4e-refresh))
 
 (defun nano-mu4e-headers-mark-and-next (mark)
   "Set MARK on the message at point or in region.
